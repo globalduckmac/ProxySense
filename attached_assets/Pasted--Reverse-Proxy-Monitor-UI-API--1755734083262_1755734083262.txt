@@ -1,0 +1,227 @@
+Создай завершённое приложение “Reverse Proxy & Monitor” (UI + API + фоновые задания) исключительно на Python. Отдай полный репозиторий: исходники, структура каталогов, миграции БД, requirements.txt/pyproject.toml, manage.py (CLI), systemd‑юниты, подробный README.
+Проект запускается локально командами вида python -m venv .venv && . .venv/bin/activate && pip install -r requirements.txt && python manage.py dev.
+
+1) Ограничения (обязательные)
+
+Только Python и его библиотеки. Никаких Node/npm, React/Vue/Angular/Svelte, Vite/Webpack/Parcel, Tailwind/Bootstrap/HTMX/Alpine и т.п.
+
+Запрет WebSocket. Не использовать websockets, fastapi_websocket, socket.io, ws, WebRTC и т.п.
+
+Релтайм‑обновления реализовать через SSE (text/event-stream) и/или через периодический fetch/long‑polling (нативный JS без сторонних библиотек).
+
+Без Docker/Compose, без Redis/Celery.
+
+Статика (CSS/иконки/JS) — только собственные файлы в репозитории; без CDN и внешних JS‑библиотек. Разрешён минимальный нативный JS (без сборки) для: открытия/закрытия модалок, отправки форм (fetch), подписки на SSE, авто‑скролла логов.
+
+2) Технологический стек (Python‑only)
+
+Web/API: FastAPI + Starlette (ASGI), Pydantic.
+
+UI: Jinja2 (серверный рендер), собственные CSS (без фреймворков). Нативный JS только для минимальной интерактивности и SSE.
+
+БД: по умолчанию SQLite (sqlite:///./app.db), опционально PostgreSQL (через .env).
+
+ORM/миграции: SQLAlchemy + Alembic.
+
+Фоновые задачи/планировщик: APScheduler (AsyncIOScheduler) в отдельном процессe backend/scheduler.py.
+
+Интеграции:
+
+SSH: Paramiko (только провижининг).
+
+Glances API: httpx (или requests) → GET /api/3/all.
+
+DNS: dnspython.
+
+Telegram: простые HTTP‑запросы к Bot API (через httpx/requests, без сторонних телеграм‑библиотек).
+
+Криптография: cryptography (Fernet) для шифрования секретов в БД.
+
+Сервер разработки: uvicorn.
+
+CLI: manage.py на Typer (или argparse/click) с командами: init-db, migrate, run-api, run-scheduler, dev, create-admin, encrypt-keygen.
+
+3) Функциональные требования
+
+Серверы (Ubuntu)
+
+Раздел “Серверы” (UI + API): CRUD, поля:
+name, host, ssh_port, username, auth_type (password|ssh_key), password?, ssh_key?, ssh_key_passphrase?, tags[],
+glances_scheme (http|https), glances_host (по умолчанию = host), glances_port, glances_path (по умолчанию /api/3/all), glances_auth_type (none|basic|token), glances_username?, glances_password?, glances_token?.
+
+Действия (через SSH/Paramiko, с подробными логами):
+
+Проверить SSH доступ (разово, для провижининга).
+
+Развернуть reverse‑proxy (Nginx) — идемпотентно: установка, директории, enable, nginx -t, reload.
+
+Установить/настроить Glances (web) — идемпотентно: пакет, systemd‑юнит web‑режима на 0.0.0.0:<port>, автозапуск.
+
+Мониторинг — только через Glances HTTP API:
+
+APScheduler опрашивает glances_scheme://glances_host:glances_port/glances_path каждые 30–60 сек.
+
+Если запрос неуспешен (timeout/network/non‑2xx) N раз подряд — статус сервера unreachable + алерт в Telegram.
+
+При успехе — парсинг CPU/RAM/Disk/Load/Uptime, запись среза, статус ok.
+
+Никаких SSH‑ping/ICMP, никаких туннелей для метрик.
+
+Upstreams (бэкенд‑цели)
+
+Раздел “Upstreams”: CRUD, поля: name, targets[] (host:port, опц. weight на будущее).
+
+Домены и reverse‑proxy конфиги
+
+Раздел “Домены”: domain, server_id, ssl (true/false), upstream_id, group_id, ns_policy (шаблон‑подстрока, напр. "dnspod"), notes.
+
+Деплой домена (через SSH):
+
+Генерация Nginx‑конфига из шаблона.
+
+Preflight: A/AAAA домена должен указывать на публичный IP сервера (для HTTP‑01).
+
+Если ssl=true — выпуск LE (certbot --nginx), 80→443, HSTS (флаг), nginx -t, reload.
+
+Весь процесс логируется (команда, stdout/stderr, rc) и транслируется в UI через SSE (модальное окно “Прогресс”).
+
+Постоянная проверка NS
+
+Периодическая задача: NS‑резолв; все NS‑хосты должны содержать подстроку ns_policy (например, dnspod).
+
+При сбоях резолва/несоответствии — алерт в Telegram + запись события.
+
+Группы доменов
+
+CRUD групп; фильтры/поиск; быстрые счётчики по группам.
+
+Главная панель
+
+Карточки: всего серверов / доступно по Glances; всего доменов / c SSL / без SSL; последние алерты/таски.
+
+Мини‑графики CPU/RAM из последних срезов (простые <canvas> + нативный JS, без библиотек).
+
+Логи и аудит
+
+Раздел “Логи”: список и просмотр задач; хранение в tasks/task_logs (строки лога с timestamp, level, source, stdout/stderr).
+
+Возможность скачать логи *.txt.
+
+Онлайн‑просмотр прогресса задач (деплой сервера/домена и т.п.) — SSE‑стрим text/event-stream (автоскролл в модалке, нативный JS).
+
+WebSocket запрещён — реализовать только через SSE/long‑polling.
+
+Уведомления в Telegram
+
+Настройки: TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID в .env и в UI.
+
+Триггеры: недоступность Glances N попыток (и восстановление), ошибка деплоя, ошибка LE, NS mismatch.
+
+Отправка — простые HTTP‑запросы к Bot API.
+
+4) Модель данных (SQLAlchemy + Alembic; SQLite по умолчанию)
+
+users (логин/пароль, роль admin; JWT).
+
+servers (включая поля Glances + статусы provisioning|ok|unreachable).
+
+server_metrics (последние срезы по Glances, TTL‑очистка/лимит по количеству).
+
+upstreams, upstream_targets.
+
+domain_groups, domains.
+
+ns_checks (результаты последней проверки).
+
+tasks, task_logs, alerts.
+
+settings (Telegram, глобальные опции).
+Чувствительные поля (пароли/ключи/токены) шифровать (Fernet). Никогда не писать секреты в логи.
+
+5) API и UI‑маршруты (FastAPI + Jinja2)
+
+UI (SSR/Jinja2):
+
+/ (Главная), /servers, /upstreams, /domains, /groups, /logs, /settings.
+
+Формы/кнопки действий делают POST на эндпоинты API; JS (нативный) обновляет части страницы без перезагрузки при необходимости.
+
+API (JWT, JSON):
+
+/auth/register, /auth/login, /auth/refresh.
+
+/servers CRUD; действия:
+
+POST /servers/{id}/check-ssh
+
+POST /servers/{id}/deploy-proxy
+
+POST /servers/{id}/install-glances
+
+GET /servers/{id}/metrics (последние данные)
+
+POST /servers/{id}/probe-glances (разовый HTTP‑опрос)
+
+/upstreams CRUD.
+
+/domains CRUD; действия:
+
+POST /domains/{id}/deploy
+
+POST /domains/{id}/verify-dns
+
+GET /domains/{id}/nginx-config (read‑only)
+
+/groups CRUD.
+
+/alerts list; /tasks list.
+
+SSE (без WebSocket): GET /tasks/{id}/stream → text/event-stream (лог‑линии/прогресс).
+
+6) Планировщик (APScheduler, отдельный процесс)
+
+Файл backend/scheduler.py: инициализация AsyncIOScheduler, register jobs, общий логгер → БД + SSE push (через запись в БД и событие, считываемое стримером).
+
+Periodic jobs:
+
+poll_glances(server_id) — опрос GET {scheme}://{host}:{port}{path} с таймаутами/ретраями; обновление servers.status и вставка в server_metrics; инкремент/сброс счётчика ошибок; триггер Telegram при порогах; запись логов.
+
+ns_watchdog() — проверка NS + политика ns_policy (подстрока, напр. dnspod), алерты.
+
+Очистка старых метрик/логов по TTL.
+
+Никаких WebSocket — коммуникация через БД + SSE‑стримы.
+
+7) SSH и безопасность
+
+Все удалённые действия — через Paramiko: логируй команду, stdout, stderr, rc (маскируй секреты).
+
+Glances web: systemd‑юнит запускает glances -w -p <PORT> -B 0.0.0.0 --disable-check-update.
+
+Защита Glances: опционально Nginx‑реверс на том же сервере с Basic Auth/TLS и/или ufw allowlist по CIDR (параметры задаются в настройках; применяй через SSH).
+
+glances_auth_type = none|basic|token — добавить соответствующие заголовки/авторизацию при опросе.
+
+Не хранить приватные ключи в открытом виде — шифровать (Fernet) и загружать в файл‑времянку только на время сессии (если необходимо).
+
+8) Генерация Nginx‑шаблонов (деплой доменов)
+
+ssl=false: listen 80; proxy_pass; proxy_set_header Host/X-Real-IP/X-Forwarded-*; timeouts; client_max_body_size 50m.
+
+ssl=true: listen 443 ssl http2; актуальные ciphers; редирект 80→443; опц. HSTS; nginx -t, reload.
+
+Файлы: /etc/nginx/sites-available/<domain>.conf + symlink в sites-enabled/.
+
+Несколько targets — upstream (round robin).
+
+Весь процесс — детальные логи + онлайн‑вывод в модалку через SSE.
+
+9) Качество и тесты
+
+Юнит‑тесты: парсинг /api/3/all, DNS‑утилиты, генерация Nginx‑шаблонов.
+
+Статический анализ/линт: ruff, black, mypy.
+
+Health‑checks: /health (API), /health/scheduler.
+
+10) Конфигурация и переменные окружения (.env пример)
