@@ -1,0 +1,21 @@
+Aug 21 20:55:36 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /api/ui/dashboard/stream HTTP/1.0" 404 Not Found
+Aug 21 20:55:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:55:41,221 - backend.ns_monitor - INFO - Starting NS check cycle...
+Aug 21 20:55:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:55:41,221 - backend.ns_monitor - INFO - Checking NS records for all domains...
+Aug 21 20:55:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:55:41,223 - backend.ns_monitor - INFO - Found 0 domains to check
+Aug 21 20:55:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:55:41,223 - backend.ns_monitor - INFO - All NS checks completed and committed to database
+Aug 21 20:55:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:55:41,223 - backend.ns_monitor - INFO - NS check cycle completed
+Aug 21 20:55:42 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /api/ui/dashboard/stream HTTP/1.0" 404 Not Found
+Aug 21 20:55:43 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:55:43,485 - httpx - INFO - HTTP Request: GET http://138.124.108.209:61208/api/4/all "HTTP/1.1 200 OK"
+Aug 21 20:55:45 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /api/ui/dashboard/stream HTTP/1.0" 404 Not Found
+Aug 21 20:55:45 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:45 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /api/ui/dashboard/stats HTTP/1.0" 404 Not Found
+Aug 21 20:55:46 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+Aug 21 20:55:47 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:49 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:50 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:52 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:53 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+Aug 21 20:55:53 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:53 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /favicon.ico HTTP/1.0" 404 Not Found
+Aug 21 20:55:54 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 404 Not Found
+Aug 21 20:55:54 testdeploy.aeza.network reverse-proxy-monitor[44546]: INFO:     213.137.89.4:0 - "GET /favicon.ico HTTP/1.0" 404 Not Found
