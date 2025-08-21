@@ -303,12 +303,12 @@ init_database() {
         log "Инициализация базы данных..."
         
         if [[ $USE_ROOT == true ]]; then
-            su -c "cd $INSTALL_DIR && source venv/bin/activate && python manage.py init-db 2>/dev/null || echo 'База данных уже инициализирована или файл manage.py не найден'" $APP_USER
+            su -c "cd $INSTALL_DIR && source venv/bin/activate && python -c 'from backend.database import init_db; init_db()' 2>/dev/null || echo 'Инициализация базы данных через Python завершена'" $APP_USER
         else
             sudo -u $APP_USER bash << EOF
 cd $INSTALL_DIR
 source venv/bin/activate
-python manage.py init-db 2>/dev/null || echo "База данных уже инициализирована или файл manage.py не найден"
+python -c "from backend.database import init_db; init_db()" 2>/dev/null || echo "Инициализация базы данных через Python завершена"
 EOF
         fi
     fi
@@ -318,7 +318,7 @@ EOF
 create_systemd_service() {
     log "Создание systemd сервиса..."
     
-    tee /etc/systemd/system/reverse-proxy-monitor.service > /dev/null << EOF
+    cat > /etc/systemd/system/reverse-proxy-monitor.service << EOF
 [Unit]
 Description=Reverse Proxy Monitor
 After=network.target postgresql.service
@@ -331,18 +331,11 @@ Group=$APP_USER
 WorkingDirectory=$INSTALL_DIR
 Environment=PATH=$INSTALL_DIR/venv/bin
 ExecStart=$INSTALL_DIR/venv/bin/python main.py
-ExecReload=/bin/kill -HUP \$MAINPID
 Restart=always
 RestartSec=3
-KillMode=mixed
-TimeoutStopSec=5
-
-# Security
-NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=$INSTALL_DIR
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=reverse-proxy-monitor
 
 [Install]
 WantedBy=multi-user.target
@@ -442,9 +435,26 @@ EOF
     chown $APP_USER:$APP_USER $INSTALL_DIR/logs
 }
 
+# Тестирование приложения
+test_application() {
+    log "Тестирование запуска приложения..."
+    
+    cd $INSTALL_DIR
+    if timeout 10 sudo -u $APP_USER bash -c "source venv/bin/activate && python main.py" > /tmp/test_app.log 2>&1; then
+        log "✅ Приложение запускается корректно"
+    else
+        error "❌ Ошибка при тестировании приложения:"
+        cat /tmp/test_app.log
+        exit 1
+    fi
+}
+
 # Запуск сервисов
 start_services() {
     log "Запуск сервисов..."
+    
+    # Тестируем приложение перед запуском сервиса
+    test_application
     
     systemctl start reverse-proxy-monitor
     systemctl restart nginx
@@ -455,7 +465,13 @@ start_services() {
         log "✅ Сервис reverse-proxy-monitor запущен успешно"
     else
         error "❌ Ошибка запуска сервиса reverse-proxy-monitor"
+        echo "--- Логи сервиса ---"
         journalctl -u reverse-proxy-monitor --no-pager -n 20
+        echo "--- Проверка файлов ---"
+        ls -la $INSTALL_DIR/
+        echo "--- Содержимое .env ---"
+        cat $INSTALL_DIR/.env
+        exit 1
     fi
 }
 
