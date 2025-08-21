@@ -39,6 +39,7 @@ class UpdatePasswordRequest(BaseModel):
 
 @router.get("/", response_model=List[UserResponse])
 async def get_users(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
@@ -60,7 +61,8 @@ async def get_users(
 
 @router.post("/", response_model=UserResponse)
 async def create_user(
-    request: CreateUserRequest,
+    user_request: CreateUserRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
@@ -69,23 +71,23 @@ async def create_user(
         raise HTTPException(status_code=403, detail="Admin access required")
     
     # Check if username already exists
-    existing_user = db.query(User).filter(User.username == request.username).first()
+    existing_user = db.query(User).filter(User.username == user_request.username).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already exists")
     
     # Check if email already exists (if provided)
-    if request.email:
-        existing_email = db.query(User).filter(User.email == request.email).first()
+    if user_request.email:
+        existing_email = db.query(User).filter(User.email == user_request.email).first()
         if existing_email:
             raise HTTPException(status_code=400, detail="Email already exists")
     
     # Create new user
-    hashed_password = get_password_hash(request.password)
+    hashed_password = get_password_hash(user_request.password)
     user = User(
-        username=request.username,
+        username=user_request.username,
         password_hash=hashed_password,
-        email=request.email,
-        role=request.role,
+        email=user_request.email,
+        role=user_request.role,
         is_active=True,
         created_at=datetime.utcnow()
     )
@@ -109,7 +111,8 @@ async def create_user(
 @router.put("/{user_id}/password")
 async def update_user_password(
     user_id: int,
-    request: UpdatePasswordRequest,
+    password_request: UpdatePasswordRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
@@ -124,13 +127,13 @@ async def update_user_password(
     
     # If not admin, verify current password
     if current_user.role != "admin":
-        if not request.current_password:
+        if not password_request.current_password:
             raise HTTPException(status_code=400, detail="Current password required")
-        if not verify_password(request.current_password, current_user.password_hash):
+        if not verify_password(password_request.current_password, current_user.password_hash):
             raise HTTPException(status_code=400, detail="Invalid current password")
     
     # Update password
-    target_user.password_hash = get_password_hash(request.new_password)
+    target_user.password_hash = get_password_hash(password_request.new_password)
     db.commit()
     
     logger.info(f"Password updated for user {target_user.username} by {current_user.username}")
@@ -141,6 +144,7 @@ async def update_user_password(
 async def update_user_status(
     user_id: int,
     is_active: bool,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
@@ -166,6 +170,7 @@ async def update_user_status(
 @router.delete("/{user_id}")
 async def delete_user(
     user_id: int,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
 ):
