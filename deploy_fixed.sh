@@ -159,6 +159,13 @@ create_app_user() {
 setup_application() {
     log "Настройка приложения..."
     
+    # Создаем или очищаем директорию приложения
+    if [[ -d "/opt/reverse-proxy-monitor" && ! -d "/opt/reverse-proxy-monitor/.git" ]]; then
+        log "Очистка существующей директории..."
+        rm -rf /opt/reverse-proxy-monitor/*
+        rm -rf /opt/reverse-proxy-monitor/.[^.]*
+    fi
+    
     # Переходим в директорию приложения
     cd /opt/reverse-proxy-monitor
     
@@ -168,7 +175,15 @@ setup_application() {
         git clone https://github.com/globalduckmac/ProxySense.git .
     else
         log "Обновление существующего репозитория..."
-        git pull origin main
+        git stash push -m "Auto-stash before update $(date)" || true
+        git pull origin main || {
+            warn "Не удалось обновить репозиторий, пересоздаем..."
+            cd /opt
+            rm -rf reverse-proxy-monitor
+            mkdir -p reverse-proxy-monitor
+            cd reverse-proxy-monitor
+            git clone https://github.com/globalduckmac/ProxySense.git .
+        }
     fi
     
     # Создаем виртуальное окружение

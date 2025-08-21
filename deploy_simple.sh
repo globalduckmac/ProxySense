@@ -60,9 +60,22 @@ fi
 
 # Клонирование приложения
 log "Клонирование приложения..."
+
+# Очищаем директорию если она существует но не является git репозиторием
+if [[ -d "/opt/reverse-proxy-monitor" && ! -d "/opt/reverse-proxy-monitor/.git" ]]; then
+    log "Очистка существующей директории..."
+    rm -rf /opt/reverse-proxy-monitor/*
+    rm -rf /opt/reverse-proxy-monitor/.[^.]*
+fi
+
 cd /opt/reverse-proxy-monitor
+
 if [[ ! -d ".git" ]]; then
     git clone https://github.com/globalduckmac/ProxySense.git .
+else
+    log "Обновление репозитория..."
+    git stash push -m "Auto-stash $(date)" || true
+    git pull origin main
 fi
 
 # Создание виртуального окружения
