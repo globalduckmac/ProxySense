@@ -19,6 +19,17 @@ Preferred communication style: Simple, everyday language.
 - **Implementation**: Created `backend/server_monitor.py` service, API endpoint `/api/servers/status`, JavaScript auto-update functions
 - **Result**: Working automatic server availability monitoring with real-time UI updates
 
+## NS Monitoring System Implementation
+- **Date**: August 21, 2025
+- **Change**: Implemented continuous NS (nameserver) monitoring system
+- **Features**: 
+  - Background NS monitoring service checking domain nameservers every 5 minutes
+  - Database column `last_ns_check_at` added to domains table
+  - Automatic NS verification against configured policies (e.g., "dnspod")
+  - Historical NS check records stored in `ns_checks` table
+- **Implementation**: Created `backend/ns_monitor.py` service, integrated with app lifecycle
+- **Result**: Continuous NS monitoring working alongside server monitoring
+
 ## Group Management Authentication Fix
 - **Date**: August 21, 2025
 - **Change**: Fixed 401 Unauthorized error when creating domain groups

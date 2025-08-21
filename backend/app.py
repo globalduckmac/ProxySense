@@ -34,10 +34,16 @@ async def lifespan(app: FastAPI):
     from backend.server_monitor import monitor_service
     await monitor_service.start()
     
+    # Start NS monitoring service
+    from backend.ns_monitor import ns_monitor
+    await ns_monitor.start()
+    
     yield
     
-    # Stop monitoring service
+    # Stop monitoring services
     await monitor_service.stop()
+    from backend.ns_monitor import ns_monitor
+    await ns_monitor.stop()
     logger.info("Shutting down Reverse Proxy & Monitor application...")
 
 

@@ -58,6 +58,7 @@
                     <th>Upstream</th>
                     <th>Group</th>
                     <th>NS Policy</th>
+                    <th>Last NS Check</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -118,6 +119,15 @@
                     </td>
                     <td>
                         <span class="ns-policy">{{ domain.ns_policy }}</span>
+                    </td>
+                    <td>
+                        {% if domain.last_ns_check_at %}
+                            <span class="last-check" id="last-ns-check-{{ domain.id }}">
+                                {{ domain.last_ns_check_at.strftime('%H:%M:%S') }}
+                            </span>
+                        {% else %}
+                            <span class="never-checked">Never</span>
+                        {% endif %}
                     </td>
                     <td>
                         <div class="action-buttons">
