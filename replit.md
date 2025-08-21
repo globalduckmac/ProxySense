@@ -6,6 +6,28 @@ This is a comprehensive reverse proxy and server monitoring system built with Fa
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes (August 2025)
+
+## DNS Verification System Update
+- **Date**: August 21, 2025
+- **Change**: Modified DNS verification to check only NS (nameserver) records instead of A records
+- **Reason**: User requirement to verify only nameserver policies (e.g., "dnspod") without IP address validation
+- **Implementation**: Updated `backend/dns_utils.py` and `backend/api/domains.py` to remove A record checking
+- **Frontend**: Modified `templates/domains.html` JavaScript to display only NS verification results
+
+## Authentication System Migration
+- **Date**: August 21, 2025  
+- **Change**: Migrated all domain and server management endpoints from JWT to cookie-based authentication
+- **Affected Endpoints**: Domain creation, DNS verification, server probe operations
+- **Implementation**: Replaced `get_admin_user` dependency with `get_current_user_from_cookie` for web UI operations
+- **Result**: Resolved 403 Forbidden errors in web interface operations
+
+## Server Management Enhancements
+- **Date**: August 21, 2025
+- **Achievement**: Successfully installed and configured Glances monitoring on server "Tony" (109.120.150.248:22)
+- **Configuration**: Glances running on port 61208 with systemd service management
+- **SSH Integration**: Enhanced SSH connection logging with detailed Paramiko connection status for real-time monitoring
+
 # System Architecture
 
 ## Frontend Architecture
