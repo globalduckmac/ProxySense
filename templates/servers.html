@@ -303,31 +303,27 @@ function submitServer(event) {
     const url = editingServerId ? `/api/servers/${editingServerId}` : '/api/servers/';
     const method = editingServerId ? 'PUT' : 'POST';
     
-    showLoading();
-    
     fetch(url, {
         method: method,
         headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getAuthToken()}`
+            'Content-Type': 'application/json'
         },
+        credentials: 'include',
         body: JSON.stringify(serverData)
     })
-    .then(response => response.json())
-    .then(data => {
-        hideLoading();
-        if (data.id) {
-            showNotification('Server saved successfully', 'success');
+    .then(response => {
+        if (response.ok) {
             closeServerModal();
-            location.reload();
+            location.reload(); // Reload page to show new server
         } else {
-            showNotification(data.detail || 'Failed to save server', 'error');
+            return response.json().then(error => {
+                alert('Error: ' + (error.detail || 'Failed to save server'));
+            });
         }
     })
     .catch(error => {
-        hideLoading();
-        showNotification('Failed to save server', 'error');
-        console.error('Error:', error);
+        console.error('Error saving server:', error);
+        alert('Failed to save server');
     });
 }
 

@@ -4,14 +4,14 @@ Server management API endpoints.
 import asyncio
 from datetime import datetime
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import logging
 
 from backend.database import get_db
 from backend.models import Server, AuthType, GlancesAuthType, ServerStatus, Task, TaskStatus, User
-from backend.auth import get_admin_user
+from backend.auth import get_admin_user, get_current_user_from_cookie
 from backend.crypto import encrypt_if_needed, decrypt_if_needed
 from backend.ssh_client import ServerProvisioner
 from backend.glances_client import GlancesClient
@@ -108,11 +108,18 @@ async def list_servers(
 
 @router.post("/", response_model=ServerResponse)
 async def create_server(
+    request: Request,
     server_data: ServerCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Create a new server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     # Check if server name already exists
     existing_server = db.query(Server).filter(Server.name == server_data.name).first()
     if existing_server:
