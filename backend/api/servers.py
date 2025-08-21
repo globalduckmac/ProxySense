@@ -271,11 +271,19 @@ async def update_server(
 
 @router.delete("/{server_id}")
 async def delete_server(
+    request: Request,
     server_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Delete a server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
         raise HTTPException(
