@@ -16,12 +16,48 @@ class TelegramClient:
     """Client for sending messages via Telegram Bot API."""
     
     def __init__(self):
-        self.bot_token = settings.TELEGRAM_BOT_TOKEN
-        self.chat_id = settings.TELEGRAM_CHAT_ID
-        self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
+        # Settings will be loaded dynamically when needed
+        self.bot_token = None
+        self.chat_id = None
+        self.base_url = None
+    
+    async def _load_settings(self):
+        """Load Telegram settings dynamically from database."""
+        try:
+            from backend.database import SessionLocal
+            from backend.models import Setting
+            from backend.crypto import decrypt_if_needed
+            
+            with SessionLocal() as db:
+                bot_token_setting = db.query(Setting).filter(Setting.key == "telegram.bot_token").first()
+                chat_id_setting = db.query(Setting).filter(Setting.key == "telegram.chat_id").first()
+                
+                if bot_token_setting and bot_token_setting.value:
+                    self.bot_token = decrypt_if_needed(bot_token_setting.value)
+                else:
+                    self.bot_token = None
+                    
+                if chat_id_setting and chat_id_setting.value:
+                    self.chat_id = decrypt_if_needed(chat_id_setting.value)
+                else:
+                    self.chat_id = None
+                
+                if self.bot_token:
+                    self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
+                else:
+                    self.base_url = None
+                    
+        except Exception as e:
+            logger.error(f"Failed to load Telegram settings: {e}")
+            self.bot_token = None
+            self.chat_id = None
+            self.base_url = None
     
     async def send_message(self, text: str, parse_mode: str = "Markdown") -> bool:
         """Send a message to the configured chat."""
+        # Always reload settings before sending
+        await self._load_settings()
+        
         if not self.bot_token or not self.chat_id:
             logger.warning("Telegram bot token or chat ID not configured")
             return False
@@ -50,7 +86,11 @@ class TelegramClient:
     
     async def send_alert(self, alert: Alert) -> bool:
         """Send an alert notification to Telegram."""
+        # Always reload settings before sending
+        await self._load_settings()
+        
         if not self.bot_token or not self.chat_id:
+            logger.warning("Telegram settings not configured for alert")
             return False
         
         # Format alert message
@@ -108,6 +148,9 @@ class TelegramClient:
     
     async def test_connection(self) -> tuple[bool, str]:
         """Test Telegram bot connection."""
+        # Always reload settings before testing
+        await self._load_settings()
+        
         if not self.bot_token:
             return False, "Bot token not configured"
         

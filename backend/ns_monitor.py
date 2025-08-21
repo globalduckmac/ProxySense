@@ -165,7 +165,14 @@ class NSMonitorService:
         db.refresh(alert)
         
         # Send Telegram notification
-        await self.telegram_client.send_alert(alert)
+        telegram_sent = await self.telegram_client.send_alert(alert)
+        if telegram_sent:
+            alert.telegram_sent = True
+            alert.telegram_sent_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Telegram notification sent for NS failed alert on {domain.domain}")
+        else:
+            logger.error(f"Failed to send Telegram notification for NS failed alert on {domain.domain}")
         
         logger.warning(f"NS failed alert created for domain {domain.domain}")
     
@@ -185,7 +192,14 @@ class NSMonitorService:
         db.refresh(alert)
         
         # Send Telegram notification
-        await self.telegram_client.send_alert(alert)
+        telegram_sent = await self.telegram_client.send_alert(alert)
+        if telegram_sent:
+            alert.telegram_sent = True
+            alert.telegram_sent_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Telegram notification sent for NS recovery alert on {domain.domain}")
+        else:
+            logger.error(f"Failed to send Telegram notification for NS recovery alert on {domain.domain}")
         
         logger.info(f"NS recovery alert created for domain {domain.domain}")
     
@@ -203,7 +217,14 @@ class NSMonitorService:
         db.refresh(alert)
         
         # Send Telegram notification
-        await self.telegram_client.send_alert(alert)
+        telegram_sent = await self.telegram_client.send_alert(alert)
+        if telegram_sent:
+            alert.telegram_sent = True
+            alert.telegram_sent_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Telegram notification sent for NS error alert on {domain.domain}")
+        else:
+            logger.error(f"Failed to send Telegram notification for NS error alert on {domain.domain}")
         
         logger.error(f"NS error alert created for domain {domain.domain}")
 

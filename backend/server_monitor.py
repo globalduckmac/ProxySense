@@ -245,7 +245,14 @@ class ServerMonitorService:
         db.refresh(alert)
         
         # Send Telegram notification
-        await self.telegram_client.send_alert(alert)
+        telegram_sent = await self.telegram_client.send_alert(alert)
+        if telegram_sent:
+            alert.telegram_sent = True
+            alert.telegram_sent_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Telegram notification sent for {resource_type} alert on {server.name}")
+        else:
+            logger.error(f"Failed to send Telegram notification for {resource_type} alert on {server.name}")
         
         logger.warning(f"High {resource_type} alert created for server {server.name}: {current_value:.1f}%")
     
@@ -263,7 +270,14 @@ class ServerMonitorService:
         db.refresh(alert)
         
         # Send Telegram notification
-        await self.telegram_client.send_alert(alert)
+        telegram_sent = await self.telegram_client.send_alert(alert)
+        if telegram_sent:
+            alert.telegram_sent = True
+            alert.telegram_sent_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Telegram notification sent for recovery alert on {server.name}")
+        else:
+            logger.error(f"Failed to send Telegram notification for recovery alert on {server.name}")
         
         logger.info(f"Recovery alert created for server {server.name}: {message}")
     
@@ -282,7 +296,14 @@ class ServerMonitorService:
             db.refresh(alert)
             
             # Send Telegram notification
-            await self.telegram_client.send_alert(alert)
+            telegram_sent = await self.telegram_client.send_alert(alert)
+            if telegram_sent:
+                alert.telegram_sent = True
+                alert.telegram_sent_at = datetime.utcnow()
+                db.commit()
+                logger.info(f"Telegram notification sent for server {server.name}")
+            else:
+                logger.error(f"Failed to send Telegram notification for server {server.name}")
             
             self.server_alert_states['unreachable'][server.id] = True
             logger.error(f"Unreachable alert created for server {server.name}")
