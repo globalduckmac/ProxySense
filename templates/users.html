@@ -19,45 +19,91 @@
         .user-card {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 24px;
-            margin-bottom: 16px;
-            transition: all 0.2s ease;
-            border-left: 4px solid var(--success-color);
+            border-radius: 16px;
+            padding: 0;
+            margin-bottom: 20px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .user-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(135deg, var(--success-color), #4CAF50);
+        }
+
+        .user-card.inactive::before {
+            background: linear-gradient(135deg, var(--danger-color), #f44336);
+        }
+
+        .user-card.admin::before {
+            background: linear-gradient(135deg, var(--primary-color), #2196F3);
         }
 
         .user-card:hover {
-            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
-            transform: translateY(-2px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+            transform: translateY(-4px);
+            border-color: var(--primary-color);
         }
 
         .user-card.inactive {
-            border-left-color: var(--danger-color);
-            opacity: 0.7;
+            opacity: 0.8;
         }
 
-        .user-card.admin {
-            border-left-color: var(--primary-color);
+        .user-card-content {
+            padding: 24px;
         }
 
         .user-header {
             display: flex;
-            justify-content: between;
-            align-items: center;
-            margin-bottom: 15px;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
         }
 
         .user-info {
             flex-grow: 1;
         }
 
-        .user-name {
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 5px;
+        .user-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
             display: flex;
             align-items: center;
-            gap: 10px;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 20px;
+            margin-right: 16px;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            border: 3px solid white;
+        }
+
+        .user-avatar.admin {
+            background: linear-gradient(135deg, #FF6B6B, #4ECDC4);
+        }
+
+        .user-avatar.inactive {
+            background: linear-gradient(135deg, #95A5A6, #BDC3C7);
+            opacity: 0.7;
+        }
+
+        .user-name {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-primary);
         }
 
         .role-badge {
@@ -111,26 +157,61 @@
 
         .users-grid {
             display: grid;
-            gap: 16px;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(600px, 1fr));
+        }
+
+        @media (max-width: 768px) {
+            .users-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .user-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .user-actions {
+                margin-top: 16px;
+                justify-content: flex-start;
+            }
         }
 
         .user-actions {
             display: flex;
-            gap: 10px;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .action-btn {
-            padding: 8px 16px;
+            padding: 10px 16px;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-size: 13px;
-            font-weight: 500;
+            font-weight: 600;
             text-decoration: none;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            transition: all 0.2s ease;
+            gap: 8px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .action-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .action-btn:hover::before {
+            left: 100%;
         }
 
         .btn-password {
@@ -359,64 +440,68 @@
 
             container.innerHTML = users.map(user => `
                 <div class="user-card ${!user.is_active ? 'inactive' : ''} ${user.role === 'admin' ? 'admin' : ''}">
-                    <div class="user-header">
-                        <div class="user-info">
-                            <div class="user-name">
-                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; margin-right: 8px;">
-                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                                </svg>
-                                ${user.username}
-                                <span class="role-badge ${user.role}">${user.role.toUpperCase()}</span>
-                                <span class="status-badge ${!user.is_active ? 'inactive' : ''}">${user.is_active ? 'Active' : 'Inactive'}</span>
-                            </div>
-                            <div class="user-meta">
-                                <div class="meta-item">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-                                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                                    </svg>
-                                    ${user.email || 'No email'}
+                    <div class="user-card-content">
+                        <div class="user-header">
+                            <div class="user-info" style="display: flex; align-items: flex-start;">
+                                <div class="user-avatar ${user.role === 'admin' ? 'admin' : ''} ${!user.is_active ? 'inactive' : ''}">
+                                    ${user.username.charAt(0).toUpperCase()}
                                 </div>
-                                <div class="meta-item">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-                                        <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2.5-9H20v2h-3.5l-1-1h-5l-1 1H5V2h3.5l1 1h5l1-1H19V2z"/>
-                                    </svg>
-                                    Created: ${new Date(user.created_at).toLocaleDateString()}
-                                </div>
-                                ${user.last_login_at ? `
-                                    <div class="meta-item">
-                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-                                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
-                                            <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-                                        </svg>
-                                        Last login: ${new Date(user.last_login_at).toLocaleDateString()}
+                                <div style="flex: 1;">
+                                    <div class="user-name">
+                                        ${user.username}
+                                        <span class="role-badge ${user.role}">${user.role.toUpperCase()}</span>
+                                        <span class="status-badge ${!user.is_active ? 'inactive' : ''}">${user.is_active ? 'Active' : 'Inactive'}</span>
                                     </div>
+                                    <div class="user-meta">
+                                        <div class="meta-item">
+                                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                            </svg>
+                                            ${user.email || 'No email'}
+                                        </div>
+                                        <div class="meta-item">
+                                            <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                                <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/>
+                                            </svg>
+                                            Created: ${new Date(user.created_at).toLocaleDateString()}
+                                        </div>
+                                        ${user.last_login_at ? `
+                                            <div class="meta-item">
+                                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                                    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                                                    <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                                                </svg>
+                                                Last login: ${new Date(user.last_login_at).toLocaleDateString()}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="user-actions">
+                                <button class="action-btn btn-password" onclick="showPasswordModal(${user.id}, '${user.username}')">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                        <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                                    </svg>
+                                    Password
+                                </button>
+                                ${user.role !== 'admin' ? `
+                                    <button class="action-btn btn-toggle" onclick="toggleUserStatus(${user.id}, ${user.is_active})">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                            ${user.is_active ? 
+                                                '<path d="M12,17A2,2 0 0,0 14,15C14,13.89 13.1,13 12,13A2,2 0 0,0 10,15A2,2 0 0,0 12,17M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6A2,2 0 0,1 4,20V10C4,8.89 4.9,8 6,8H7V6A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18M12,3A3,3 0 0,0 9,6V8H15V6A3,3 0 0,0 12,3Z"/>' :
+                                                '<path d="M18,20V10H6V20H18M18,8A2,2 0 0,1 20,10V20A2,2 0 0,1 18,22H6C4.89,22 4,21.1 4,20V10A2,2 0 0,1 6,8H15V6A3,3 0 0,0 12,3A3,3 0 0,0 9,6H7A5,5 0 0,1 12,1A5,5 0 0,1 17,6V8H18Z"/>'
+                                            }
+                                        </svg>
+                                        ${user.is_active ? 'Disable' : 'Enable'}
+                                    </button>
+                                    <button class="action-btn btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                        </svg>
+                                        Delete
+                                    </button>
                                 ` : ''}
                             </div>
-                        </div>
-                        <div class="user-actions">
-                            <button class="action-btn btn-password" onclick="showPasswordModal(${user.id}, '${user.username}')">
-                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-                                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                                </svg>
-                                Change Password
-                            </button>
-                            ${user.role !== 'admin' ? `
-                                <button class="action-btn btn-toggle" onclick="toggleUserStatus(${user.id}, ${user.is_active})">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-                                        ${user.is_active ? 
-                                            '<path d="M18 10v-4c0-3.313-2.687-6-6-6s-6 2.687-6 6v4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2zM8.9 10V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v4H8.9z"/>' :
-                                            '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z"/>'
-                                        }
-                                    </svg>
-                                    ${user.is_active ? 'Deactivate' : 'Activate'}
-                                </button>
-                                <button class="action-btn btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
-                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
-                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                    </svg>
-                                    Delete
-                                </button>
-                            ` : ''}
                         </div>
                     </div>
                 </div>
