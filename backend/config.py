@@ -14,13 +14,30 @@ class Settings(BaseSettings):
     
     # Security
     SECRET_KEY: str = "dev-secret-key-change-in-production"
+    JWT_SECRET_KEY: str = "dev-jwt-secret-key-change-in-production"  # Добавлено для совместимости
+    ENCRYPTION_KEY: str = ""  # Добавлено для совместимости
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ENCRYPTION_KEY_PATH: str = "./encryption.key"
     
     # Application
     DEBUG: bool = True
+    ENVIRONMENT: str = "development"  # Добавлено для совместимости
     LOG_LEVEL: str = "INFO"
+    
+    # Database Pool Settings (добавлены для исправления)
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 30
+    DB_POOL_TIMEOUT: int = 60
+    
+    # Cookie Settings (добавлены для reverse proxy)
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "lax"
+    
+    # Monitoring Settings (добавлены)
+    SERVER_CHECK_INTERVAL: int = 300
+    NS_CHECK_INTERVAL: int = 3600
+    ALERT_COOLDOWN: int = 1800
     
     # Telegram
     TELEGRAM_BOT_TOKEN: str = ""

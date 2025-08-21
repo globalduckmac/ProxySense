@@ -1,0 +1,78 @@
+[2025-08-21 21:32:16] Применение миграций базы данных...
+Traceback (most recent call last):
+  File "/opt/reverse-proxy-monitor/venv/bin/alembic", line 7, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/config.py", line 630, in main
+    CommandLine(prog=prog).main(argv=argv)
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/config.py", line 624, in main
+    self.run_cmd(cfg, options)
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/config.py", line 601, in run_cmd
+    fn(
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/command.py", line 398, in upgrade
+    script.run_env()
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/script/base.py", line 579, in run_env
+    util.load_python_file(self.dir, "env.py")
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/util/pyfiles.py", line 93, in load_python_file
+    module = load_module_py(module_id, path)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/alembic/util/pyfiles.py", line 109, in load_module_py
+    spec.loader.exec_module(module)  # type: ignore
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap_external>", line 940, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "/opt/reverse-proxy-monitor/migrations/env.py", line 19, in <module>
+    from backend.models import Base
+  File "/opt/reverse-proxy-monitor/backend/models.py", line 14, in <module>
+    from backend.database import Base
+  File "/opt/reverse-proxy-monitor/backend/database.py", line 18
+    get_database_url(, pool_size=20, max_overflow=30, pool_timeout=60),
+                     ^
+SyntaxError: invalid syntax
+[2025-08-21 21:32:17] WARNING: Не удалось применить миграции Alembic, создаем таблицы через SQLAlchemy
+Traceback (most recent call last):
+  File "<string>", line 2, in <module>
+  File "/opt/reverse-proxy-monitor/backend/app.py", line 12, in <module>
+    from backend.config import settings
+  File "/opt/reverse-proxy-monitor/backend/config.py", line 52, in <module>
+    settings = Settings()
+               ^^^^^^^^^^
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/pydantic_settings/main.py", line 71, in __init__
+    super().__init__(
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/pydantic/main.py", line 164, in __init__
+    __pydantic_self__.__pydantic_validator__.validate_python(data, self_instance=__pydantic_self__)
+pydantic_core._pydantic_core.ValidationError: 11 validation errors for Settings
+jwt_secret_key
+  Extra inputs are not permitted [type=extra_forbidden, input_value='04dd3cd68c3f15fbada38fe2...ee7ae9031e6b30781d15847', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+encryption_key
+  Extra inputs are not permitted [type=extra_forbidden, input_value='tjXaa1Vr31qY84xysv6UzRnQasfmK-eeFe_6lw_gnlc=', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+environment
+  Extra inputs are not permitted [type=extra_forbidden, input_value='production', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+db_pool_size
+  Extra inputs are not permitted [type=extra_forbidden, input_value='20', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+db_max_overflow
+  Extra inputs are not permitted [type=extra_forbidden, input_value='30', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+db_pool_timeout
+  Extra inputs are not permitted [type=extra_forbidden, input_value='60', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+cookie_secure
+  Extra inputs are not permitted [type=extra_forbidden, input_value='false', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+cookie_samesite
+  Extra inputs are not permitted [type=extra_forbidden, input_value='lax', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+server_check_interval
+  Extra inputs are not permitted [type=extra_forbidden, input_value='300', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+ns_check_interval
+  Extra inputs are not permitted [type=extra_forbidden, input_value='3600', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+alert_cooldown
+  Extra inputs are not permitted [type=extra_forbidden, input_value='1800', input_type=str]
+    For further information visit https://errors.pydantic.dev/2.5/v/extra_forbidden
+root@testdeploy:~# 

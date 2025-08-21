@@ -13,10 +13,13 @@ def get_database_url() -> str:
     """Get database URL from environment or settings."""
     return os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
-# Create database engine
+# Create database engine with pool settings
 engine = create_engine(
     get_database_url(),
     pool_pre_ping=True,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
     connect_args={"check_same_thread": False} if "sqlite" in get_database_url() else {}
 )
 
