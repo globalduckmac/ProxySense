@@ -1,0 +1,22 @@
+root@testdeploy:/var/log/reverse-proxy-monitor# journalctl -u reverse-proxy-monitor --no-pager -n 20
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:   File "/opt/reverse-proxy-monitor/backend/config.py", line 52, in <module>
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:     settings = Settings()
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:                ^^^^^^^^^^
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:   File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/pydantic_settings/main.py", line 188, in __init__
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:     super().__init__(
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:   File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/pydantic/main.py", line 253, in __init__
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:     validated_self = self.__pydantic_validator__.validate_python(data, self_instance=self)
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]: pydantic_core._pydantic_core.ValidationError: 3 validation errors for Settings
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]: jwt_secret_key
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:   Extra inputs are not permitted [type=extra_forbidden, input_value='f6678f267bc7daf5d68c33bd...07c1ef2daf97fe5d2b0cc76', input_type=str]
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:     For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]: host
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:   Extra inputs are not permitted [type=extra_forbidden, input_value='0.0.0.0', input_type=str]
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:     For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]: port
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:   Extra inputs are not permitted [type=extra_forbidden, input_value='5000', input_type=str]
+Aug 21 18:06:28 testdeploy.aeza.network reverse-proxy-monitor[44883]:     For further information visit https://errors.pydantic.dev/2.11/v/extra_forbidden
+Aug 21 18:06:28 testdeploy.aeza.network systemd[1]: reverse-proxy-monitor.service: Main process exited, code=exited, status=1/FAILURE
+Aug 21 18:06:28 testdeploy.aeza.network systemd[1]: reverse-proxy-monitor.service: Failed with result 'exit-code'.
+root@testdeploy:/var/log/reverse-proxy-monitor# 
