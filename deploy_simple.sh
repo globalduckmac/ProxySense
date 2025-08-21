@@ -258,11 +258,18 @@ def get_db_session():
     return get_db()
 EOF
 
-# Исправление настроек cookie в auth.py
+# Исправление настроек cookie в auth.py и ui/routes.py
 if [[ -f "backend/auth.py" ]]; then
     sed -i 's/secure=True/secure=False/g' backend/auth.py
     sed -i 's/samesite="strict"/samesite="lax"/g' backend/auth.py
     sed -i 's/samesite="Strict"/samesite="lax"/g' backend/auth.py
+fi
+
+# Исправление настроек куков в UI routes для аутентификации  
+if [[ -f "backend/ui/routes.py" ]]; then
+    sed -i 's/secure=not settings\.DEBUG/secure=False/g' backend/ui/routes.py
+    # Добавляем samesite="lax" если его нет
+    sed -i '/httponly=True,$/a\        samesite="lax"  # Исправлено для работы с Nginx reverse proxy' backend/ui/routes.py
 fi
 
 # Инициализация БД
