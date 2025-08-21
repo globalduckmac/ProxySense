@@ -12,7 +12,7 @@ from backend.database import get_db
 from backend.models import Domain, DomainGroup, Server, Upstream, Task, TaskStatus, User
 from backend.auth import get_admin_user, get_current_user_from_cookie
 from backend.nginx_templates import NginxConfig, NginxDeployment
-from backend.dns_utils import verify_domain_points_to_server, check_domain_ns
+from backend.dns_utils import check_domain_ns
 from backend.ssh_client import SSHClient
 from backend.crypto import decrypt_if_needed
 
@@ -363,23 +363,14 @@ async def verify_domain_dns(
         )
     
     try:
-        # Check if domain points to server
-        points_to_server, dns_message = await verify_domain_points_to_server(
-            domain.domain, server.host
-        )
-        
-        # Check NS policy
+        # Check NS policy only
         ns_servers, ns_valid, ns_error = await check_domain_ns(
             domain.domain, domain.ns_policy
         )
         
         return {
             "domain": domain.domain,
-            "server_ip": server.host,
-            "dns_check": {
-                "points_to_server": points_to_server,
-                "message": dns_message
-            },
+            "ns_policy": domain.ns_policy,
             "ns_check": {
                 "valid": ns_valid,
                 "servers": ns_servers,
