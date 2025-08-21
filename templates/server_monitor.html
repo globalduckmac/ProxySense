@@ -3,205 +3,598 @@
 {% block title %}Server Monitor - {{ server.name }}{% endblock %}
 
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center mb-4">
+<link href="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.min.js"></script>
+
+<style>
+.monitor-page {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px 0;
+}
+
+.monitor-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.monitor-header {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.monitor-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0;
+}
+
+.monitor-title h1 {
+    display: flex;
+    align-items: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.monitor-title .server-icon {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    width: 60px;
+    height: 60px;
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 20px;
+    font-size: 1.5rem;
+}
+
+.status-badge {
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-online {
+    background: linear-gradient(135deg, #00c851, #007e33);
+    color: white;
+    box-shadow: 0 4px 15px rgba(0, 200, 81, 0.3);
+}
+
+.status-offline {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+}
+
+.status-checking {
+    background: linear-gradient(135deg, #ffbb33, #ff8800);
+    color: white;
+    box-shadow: 0 4px 15px rgba(255, 187, 51, 0.3);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.btn-glass {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #2c3e50;
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-glass:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    color: #2c3e50;
+    text-decoration: none;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--card-color, #667eea), var(--card-color-end, #764ba2));
+}
+
+.metric-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.15);
+}
+
+.metric-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.metric-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: white;
+    background: linear-gradient(135deg, var(--card-color, #667eea), var(--card-color-end, #764ba2));
+}
+
+.metric-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 10px 0;
+}
+
+.metric-details {
+    font-size: 0.9rem;
+    color: #7f8c8d;
+    line-height: 1.6;
+}
+
+.chart-container {
+    position: relative;
+    height: 200px;
+    margin-top: 20px;
+}
+
+.progress-ring {
+    width: 120px;
+    height: 120px;
+    margin: 0 auto;
+}
+
+.progress-ring svg {
+    transform: rotate(-90deg);
+}
+
+.progress-ring circle {
+    fill: transparent;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke-dasharray 0.5s ease;
+}
+
+.progress-ring .background {
+    stroke: #ecf0f1;
+}
+
+.progress-ring .progress {
+    stroke: var(--progress-color, #667eea);
+    stroke-dasharray: 0 251;
+}
+
+.details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+.detail-card {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    padding: 30px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.detail-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid #ecf0f1;
+}
+
+.detail-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: white;
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    margin-right: 15px;
+}
+
+.detail-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.info-item {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 12px;
+    border-left: 4px solid #667eea;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #7f8c8d;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.processes-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.processes-table th,
+.processes-table td {
+    padding: 12px 15px;
+    text-align: left;
+    border-bottom: 1px solid #ecf0f1;
+}
+
+.processes-table th {
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.processes-table tbody tr:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+.error-state {
+    text-align: center;
+    padding: 60px 30px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.error-icon {
+    width: 80px;
+    height: 80px;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    font-size: 2rem;
+}
+
+.loading-state {
+    text-align: center;
+    padding: 60px 30px;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 4px solid rgba(102, 126, 234, 0.2);
+    border-top: 4px solid #667eea;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Color themes for different metrics */
+.cpu-card { --card-color: #e74c3c; --card-color-end: #c0392b; }
+.memory-card { --card-color: #3498db; --card-color-end: #2980b9; }
+.disk-card { --card-color: #f39c12; --card-color-end: #e67e22; }
+.network-card { --card-color: #9b59b6; --card-color-end: #8e44ad; }
+</style>
+
+<div class="monitor-page">
+    <div class="monitor-container">
+        <div class="monitor-header fade-in">
+            <div class="monitor-title">
                 <h1>
-                    <i class="fas fa-server"></i> {{ server.name }} Monitor
-                    <span id="server-status" class="badge badge-secondary">Checking...</span>
+                    <div class="server-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    {{ server.name }} Monitor
                 </h1>
-                <div class="btn-group">
-                    <a href="/servers" class="btn btn-outline-secondary">
+                <div class="action-buttons">
+                    <span id="server-status" class="status-badge status-checking">Checking...</span>
+                    <a href="/servers" class="btn-glass">
                         <i class="fas fa-arrow-left"></i> Back to Servers
                     </a>
-                    <button id="refresh-btn" class="btn btn-primary">
+                    <button id="refresh-btn" class="btn-glass">
                         <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Server Info Card -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5><i class="fas fa-info-circle"></i> Server Information</h5>
+        <!-- Server Info -->
+        <div class="detail-card fade-in">
+            <div class="detail-header">
+                <div class="detail-icon">
+                    <i class="fas fa-info-circle"></i>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-3">
-                            <strong>Host:</strong> {{ server.host }}:{{ server.port }}
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Status:</strong> 
-                            <span class="badge badge-{{ 'success' if server.status.value == 'ok' else 'danger' if server.status.value == 'unreachable' else 'warning' }}">
-                                {{ server.status.value.title() }}
-                            </span>
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Glances:</strong> {{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}
-                        </div>
-                        <div class="col-md-3">
-                            <strong>Created:</strong> {{ server.created_at.strftime('%Y-%m-%d %H:%M') }}
-                        </div>
-                    </div>
+                <h3 class="detail-title">Server Information</h3>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Host</div>
+                    <div class="info-value">{{ server.host }}:{{ server.ssh_port }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Status</div>
+                    <div class="info-value">{{ server.status.value.title() }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Glances URL</div>
+                    <div class="info-value">{{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-label">Created</div>
+                    <div class="info-value">{{ server.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Monitoring Data -->
-    <div id="monitoring-data" style="display: none;">
-        <!-- System Overview -->
-        <div class="row mb-4">
-            <div class="col-md-3">
-                <div class="card bg-primary text-white">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-microchip fa-2x mr-3"></i>
-                            <div>
-                                <h6 class="card-title mb-0">CPU Usage</h6>
-                                <h4 id="cpu-usage" class="mb-0">--%</h4>
+        <!-- Monitoring Data -->
+        <div id="monitoring-data" style="display: none;">
+            <!-- System Overview -->
+            <div class="metrics-grid fade-in">
+                <div class="metric-card cpu-card">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-icon">
+                                <i class="fas fa-microchip"></i>
                             </div>
                         </div>
+                        <h3 class="metric-title">CPU Usage</h3>
                     </div>
+                    <div class="metric-value" id="cpu-usage">--%</div>
+                    <div class="progress-ring">
+                        <svg width="120" height="120">
+                            <circle class="background" cx="60" cy="60" r="40"></circle>
+                            <circle class="progress" cx="60" cy="60" r="40" id="cpu-progress" style="--progress-color: #e74c3c"></circle>
+                        </svg>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #2c3e50;" id="cpu-percent">0%</div>
+                    </div>
+                    <div class="metric-details" id="cpu-details">Loading...</div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-success text-white">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-memory fa-2x mr-3"></i>
-                            <div>
-                                <h6 class="card-title mb-0">Memory Usage</h6>
-                                <h4 id="memory-usage" class="mb-0">--%</h4>
+
+                <div class="metric-card memory-card">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-icon">
+                                <i class="fas fa-memory"></i>
                             </div>
                         </div>
+                        <h3 class="metric-title">Memory Usage</h3>
                     </div>
+                    <div class="metric-value" id="memory-usage">--%</div>
+                    <div class="progress-ring">
+                        <svg width="120" height="120">
+                            <circle class="background" cx="60" cy="60" r="40"></circle>
+                            <circle class="progress" cx="60" cy="60" r="40" id="memory-progress" style="--progress-color: #3498db"></circle>
+                        </svg>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #2c3e50;" id="memory-percent">0%</div>
+                    </div>
+                    <div class="metric-details" id="memory-details">Loading...</div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-warning text-white">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-hdd fa-2x mr-3"></i>
-                            <div>
-                                <h6 class="card-title mb-0">Disk Usage</h6>
-                                <h4 id="disk-usage" class="mb-0">--%</h4>
+
+                <div class="metric-card disk-card">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-icon">
+                                <i class="fas fa-hdd"></i>
                             </div>
                         </div>
+                        <h3 class="metric-title">Disk Usage</h3>
                     </div>
+                    <div class="metric-value" id="disk-usage">--%</div>
+                    <div class="progress-ring">
+                        <svg width="120" height="120">
+                            <circle class="background" cx="60" cy="60" r="40"></circle>
+                            <circle class="progress" cx="60" cy="60" r="40" id="disk-progress" style="--progress-color: #f39c12"></circle>
+                        </svg>
+                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: 700; color: #2c3e50;" id="disk-percent">0%</div>
+                    </div>
+                    <div class="metric-details" id="disk-details">Loading...</div>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card bg-info text-white">
-                    <div class="card-body">
-                        <div class="d-flex align-items-center">
-                            <i class="fas fa-clock fa-2x mr-3"></i>
-                            <div>
-                                <h6 class="card-title mb-0">Uptime</h6>
-                                <h4 id="uptime" class="mb-0">--</h4>
+
+                <div class="metric-card network-card">
+                    <div class="metric-header">
+                        <div>
+                            <div class="metric-icon">
+                                <i class="fas fa-network-wired"></i>
                             </div>
                         </div>
+                        <h3 class="metric-title">Uptime</h3>
                     </div>
+                    <div class="metric-value" id="uptime">--</div>
+                    <div class="metric-details" id="network-details">Loading...</div>
                 </div>
             </div>
-        </div>
 
-        <!-- Detailed Information -->
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-microchip"></i> CPU Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="cpu-details">Loading...</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-memory"></i> Memory Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="memory-details">Loading...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-hdd"></i> Disk Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="disk-details">Loading...</div>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-network-wired"></i> Network Information</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="network-details">Loading...</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5><i class="fas fa-list"></i> Running Processes (Top 10)</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-sm">
-                                <thead>
-                                    <tr>
-                                        <th>PID</th>
-                                        <th>Name</th>
-                                        <th>CPU %</th>
-                                        <th>Memory %</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="processes-table">
-                                    <tr><td colspan="5">Loading...</td></tr>
-                                </tbody>
-                            </table>
+            <!-- Detailed Information -->
+            <div class="details-grid fade-in">
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <div class="detail-icon">
+                            <i class="fas fa-microchip"></i>
                         </div>
+                        <h3 class="detail-title">CPU Information</h3>
                     </div>
+                    <div id="cpu-details-extended">Loading...</div>
+                </div>
+
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <div class="detail-icon">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <h3 class="detail-title">Memory Information</h3>
+                    </div>
+                    <div id="memory-details-extended">Loading...</div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Error Message -->
-    <div id="error-message" style="display: none;">
-        <div class="alert alert-danger">
-            <h5><i class="fas fa-exclamation-triangle"></i> Connection Error</h5>
-            <p>Unable to connect to Glances monitoring service on this server.</p>
-            <p><strong>Glances URL:</strong> {{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}{{ server.glances_path }}</p>
-        </div>
-    </div>
+            <div class="details-grid fade-in">
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <div class="detail-icon">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <h3 class="detail-title">Disk Information</h3>
+                    </div>
+                    <div id="disk-details-extended">Loading...</div>
+                </div>
 
-    <!-- Loading Spinner -->
-    <div id="loading-spinner" class="text-center">
-        <div class="spinner-border text-primary" role="status">
-            <span class="sr-only">Loading...</span>
+                <div class="detail-card">
+                    <div class="detail-header">
+                        <div class="detail-icon">
+                            <i class="fas fa-network-wired"></i>
+                        </div>
+                        <h3 class="detail-title">Network Information</h3>
+                    </div>
+                    <div id="network-details-extended">Loading...</div>
+                </div>
+            </div>
+
+            <div class="detail-card fade-in">
+                <div class="detail-header">
+                    <div class="detail-icon">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <h3 class="detail-title">Running Processes (Top 10)</h3>
+                </div>
+                <table class="processes-table">
+                    <thead>
+                        <tr>
+                            <th>PID</th>
+                            <th>Name</th>
+                            <th>CPU %</th>
+                            <th>Memory %</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="processes-table">
+                        <tr><td colspan="5" style="text-align: center; padding: 30px; color: #7f8c8d;">Loading processes...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
-        <p class="mt-2">Loading server monitoring data...</p>
+
+        <!-- Error Message -->
+        <div id="error-message" style="display: none;">
+            <div class="error-state fade-in">
+                <div class="error-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 style="color: #2c3e50; margin-bottom: 15px;">Connection Error</h3>
+                <p style="color: #7f8c8d; margin-bottom: 10px;">Unable to connect to Glances monitoring service on this server.</p>
+                <p style="color: #7f8c8d; font-family: monospace; background: #f8f9fa; padding: 10px; border-radius: 8px; font-size: 0.9rem;">
+                    <strong>Glances URL:</strong> {{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}{{ server.glances_path }}
+                </p>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div id="loading-spinner">
+            <div class="loading-state">
+                <div class="loading-spinner"></div>
+                <h3 style="color: #2c3e50; margin-bottom: 10px;">Loading Server Data</h3>
+                <p style="color: #7f8c8d;">Connecting to Glances monitoring service...</p>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -242,7 +635,7 @@ async function loadGlancesData() {
             document.getElementById('error-message').style.display = 'none';
             document.getElementById('monitoring-data').style.display = 'block';
             document.getElementById('server-status').textContent = 'Online';
-            document.getElementById('server-status').className = 'badge badge-success';
+            document.getElementById('server-status').className = 'status-badge status-online';
         } else {
             showError();
         }
@@ -252,30 +645,57 @@ async function loadGlancesData() {
     }
 }
 
+function updateProgressRing(elementId, percentage, color) {
+    const circle = document.getElementById(elementId);
+    const circumference = 2 * Math.PI * 40; // radius = 40
+    const offset = circumference - (percentage / 100 * circumference);
+    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    circle.style.strokeDashoffset = offset;
+}
+
 function displayGlancesData(data) {
     // CPU Information
     if (data.cpu) {
         const cpuTotal = data.cpu.total || 0;
         document.getElementById('cpu-usage').textContent = `${cpuTotal.toFixed(1)}%`;
+        document.getElementById('cpu-percent').textContent = `${cpuTotal.toFixed(0)}%`;
+        updateProgressRing('cpu-progress', cpuTotal);
         
-        let cpuDetails = `<strong>Total:</strong> ${cpuTotal.toFixed(1)}%<br>`;
-        if (data.cpu.user !== undefined) cpuDetails += `<strong>User:</strong> ${data.cpu.user.toFixed(1)}%<br>`;
-        if (data.cpu.system !== undefined) cpuDetails += `<strong>System:</strong> ${data.cpu.system.toFixed(1)}%<br>`;
-        if (data.cpu.idle !== undefined) cpuDetails += `<strong>Idle:</strong> ${data.cpu.idle.toFixed(1)}%<br>`;
-        if (data.cpu.iowait !== undefined) cpuDetails += `<strong>IO Wait:</strong> ${data.cpu.iowait.toFixed(1)}%`;
-        document.getElementById('cpu-details').innerHTML = cpuDetails;
+        let cpuDetails = `Active: ${cpuTotal.toFixed(1)}%`;
+        if (data.cpu.user !== undefined) cpuDetails += ` • User: ${data.cpu.user.toFixed(1)}%`;
+        if (data.cpu.system !== undefined) cpuDetails += ` • System: ${data.cpu.system.toFixed(1)}%`;
+        document.getElementById('cpu-details').textContent = cpuDetails;
+        
+        // Extended CPU details
+        let cpuExtended = '<div class="info-grid">';
+        cpuExtended += `<div class="info-item"><div class="info-label">Total Usage</div><div class="info-value">${cpuTotal.toFixed(1)}%</div></div>`;
+        if (data.cpu.user !== undefined) cpuExtended += `<div class="info-item"><div class="info-label">User</div><div class="info-value">${data.cpu.user.toFixed(1)}%</div></div>`;
+        if (data.cpu.system !== undefined) cpuExtended += `<div class="info-item"><div class="info-label">System</div><div class="info-value">${data.cpu.system.toFixed(1)}%</div></div>`;
+        if (data.cpu.idle !== undefined) cpuExtended += `<div class="info-item"><div class="info-label">Idle</div><div class="info-value">${data.cpu.idle.toFixed(1)}%</div></div>`;
+        if (data.cpu.iowait !== undefined) cpuExtended += `<div class="info-item"><div class="info-label">IO Wait</div><div class="info-value">${data.cpu.iowait.toFixed(1)}%</div></div>`;
+        cpuExtended += '</div>';
+        document.getElementById('cpu-details-extended').innerHTML = cpuExtended;
     }
     
     // Memory Information
     if (data.mem) {
         const memPercent = data.mem.percent || 0;
         document.getElementById('memory-usage').textContent = `${memPercent.toFixed(1)}%`;
+        document.getElementById('memory-percent').textContent = `${memPercent.toFixed(0)}%`;
+        updateProgressRing('memory-progress', memPercent);
         
-        let memDetails = `<strong>Used:</strong> ${memPercent.toFixed(1)}% (${formatBytes(data.mem.used || 0)})<br>`;
-        memDetails += `<strong>Total:</strong> ${formatBytes(data.mem.total || 0)}<br>`;
-        memDetails += `<strong>Available:</strong> ${formatBytes(data.mem.available || 0)}<br>`;
-        memDetails += `<strong>Free:</strong> ${formatBytes(data.mem.free || 0)}`;
-        document.getElementById('memory-details').innerHTML = memDetails;
+        let memDetails = `Used: ${formatBytes(data.mem.used || 0)} of ${formatBytes(data.mem.total || 0)}`;
+        document.getElementById('memory-details').textContent = memDetails;
+        
+        // Extended memory details
+        let memExtended = '<div class="info-grid">';
+        memExtended += `<div class="info-item"><div class="info-label">Used</div><div class="info-value">${formatBytes(data.mem.used || 0)}</div></div>`;
+        memExtended += `<div class="info-item"><div class="info-label">Total</div><div class="info-value">${formatBytes(data.mem.total || 0)}</div></div>`;
+        memExtended += `<div class="info-item"><div class="info-label">Available</div><div class="info-value">${formatBytes(data.mem.available || 0)}</div></div>`;
+        memExtended += `<div class="info-item"><div class="info-label">Free</div><div class="info-value">${formatBytes(data.mem.free || 0)}</div></div>`;
+        memExtended += `<div class="info-item"><div class="info-label">Percentage</div><div class="info-value">${memPercent.toFixed(1)}%</div></div>`;
+        memExtended += '</div>';
+        document.getElementById('memory-details-extended').innerHTML = memExtended;
     }
     
     // Disk Information
@@ -283,12 +703,22 @@ function displayGlancesData(data) {
         const rootDisk = data.fs.find(disk => disk.mnt_point === '/') || data.fs[0];
         const diskPercent = rootDisk.percent || 0;
         document.getElementById('disk-usage').textContent = `${diskPercent.toFixed(1)}%`;
+        document.getElementById('disk-percent').textContent = `${diskPercent.toFixed(0)}%`;
+        updateProgressRing('disk-progress', diskPercent);
         
-        let diskDetails = '';
+        let diskDetails = `${formatBytes(rootDisk.used || 0)} of ${formatBytes(rootDisk.size || 0)} used`;
+        document.getElementById('disk-details').textContent = diskDetails;
+        
+        // Extended disk details
+        let diskExtended = '<div class="info-grid">';
         data.fs.forEach(disk => {
-            diskDetails += `<strong>${disk.mnt_point}:</strong> ${disk.percent.toFixed(1)}% (${formatBytes(disk.used)} / ${formatBytes(disk.size)})<br>`;
+            diskExtended += `<div class="info-item">`;
+            diskExtended += `<div class="info-label">${disk.mnt_point}</div>`;
+            diskExtended += `<div class="info-value">${disk.percent.toFixed(1)}% (${formatBytes(disk.used)} / ${formatBytes(disk.size)})</div>`;
+            diskExtended += `</div>`;
         });
-        document.getElementById('disk-details').innerHTML = diskDetails;
+        diskExtended += '</div>';
+        document.getElementById('disk-details-extended').innerHTML = diskExtended;
     }
     
     // Uptime
@@ -299,14 +729,21 @@ function displayGlancesData(data) {
     
     // Network Information
     if (data.network && data.network.length > 0) {
-        let networkDetails = '';
+        let networkDetails = 'Active interfaces detected';
+        document.getElementById('network-details').textContent = networkDetails;
+        
+        // Extended network details
+        let networkExtended = '<div class="info-grid">';
         data.network.forEach(iface => {
             if (iface.interface_name !== 'lo') {
-                networkDetails += `<strong>${iface.interface_name}:</strong><br>`;
-                networkDetails += `Rx: ${formatBytes(iface.rx_bytes || 0)} | Tx: ${formatBytes(iface.tx_bytes || 0)}<br>`;
+                networkExtended += `<div class="info-item">`;
+                networkExtended += `<div class="info-label">${iface.interface_name}</div>`;
+                networkExtended += `<div class="info-value">↓ ${formatBytes(iface.rx_bytes || 0)} • ↑ ${formatBytes(iface.tx_bytes || 0)}</div>`;
+                networkExtended += `</div>`;
             }
         });
-        document.getElementById('network-details').innerHTML = networkDetails || 'No network interfaces found';
+        networkExtended += '</div>';
+        document.getElementById('network-details-extended').innerHTML = networkExtended || '<p style="color: #7f8c8d;">No network interfaces found</p>';
     }
     
     // Processes
@@ -315,11 +752,11 @@ function displayGlancesData(data) {
         data.processlist.slice(0, 10).forEach(proc => {
             processRows += `
                 <tr>
-                    <td>${proc.pid}</td>
-                    <td>${proc.name}</td>
-                    <td>${proc.cpu_percent ? proc.cpu_percent.toFixed(1) : '0.0'}%</td>
-                    <td>${proc.memory_percent ? proc.memory_percent.toFixed(1) : '0.0'}%</td>
-                    <td>${proc.status || 'Unknown'}</td>
+                    <td style="font-family: monospace;">${proc.pid}</td>
+                    <td style="font-weight: 600;">${proc.name}</td>
+                    <td><span style="color: ${proc.cpu_percent > 10 ? '#e74c3c' : '#27ae60'};">${proc.cpu_percent ? proc.cpu_percent.toFixed(1) : '0.0'}%</span></td>
+                    <td><span style="color: ${proc.memory_percent > 5 ? '#e74c3c' : '#27ae60'};">${proc.memory_percent ? proc.memory_percent.toFixed(1) : '0.0'}%</span></td>
+                    <td><span style="color: ${proc.status === 'running' ? '#27ae60' : '#7f8c8d'};">${proc.status || 'Unknown'}</span></td>
                 </tr>
             `;
         });
@@ -332,7 +769,7 @@ function showError() {
     document.getElementById('monitoring-data').style.display = 'none';
     document.getElementById('error-message').style.display = 'block';
     document.getElementById('server-status').textContent = 'Offline';
-    document.getElementById('server-status').className = 'badge badge-danger';
+    document.getElementById('server-status').className = 'status-badge status-offline';
 }
 
 // Refresh button click handler
