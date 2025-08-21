@@ -8,6 +8,20 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Nginx Auto-Installation for Domain Deployment Fix
+- **Date**: August 21, 2025
+- **Change**: Fixed domain deployment failures by adding automatic Nginx installation and configuration
+- **Features**: 
+  - **Automatic Nginx Detection**: Checks if Nginx is installed before deployment
+  - **Multi-OS Installation Support**: Handles Ubuntu/Debian (apt) and CentOS/RHEL (yum/dnf) package managers
+  - **Directory Structure Setup**: Creates sites-available and sites-enabled directories automatically
+  - **Configuration Integration**: Ensures nginx.conf includes sites-enabled directory
+  - **Enhanced Logging**: Detailed deployment logs for troubleshooting
+- **Implementation**: Modified `run_deploy_domain_task()` in `backend/api/domains.py` with comprehensive pre-deployment checks
+- **Result**: Domain deployment now works on fresh servers without pre-installed Nginx
+
+## Complete Alert System Implementation
+
 ## Complete Alert System Implementation
 - **Date**: August 21, 2025
 - **Change**: Implemented comprehensive monitoring and alerting system with Telegram notifications

@@ -551,7 +551,66 @@ async def run_deploy_domain_task(task_id: int, domain_id: int, email: str):
         if not await client.connect():
             raise Exception("Failed to connect to server via SSH")
         
-        task.progress = 40
+        task.progress = 30
+        db.commit()
+        
+        # Check if Nginx is installed and install if needed
+        log = TaskLog(
+            task_id=task_id,
+            level="INFO",
+            source="nginx",
+            message="Checking Nginx installation status"
+        )
+        db.add(log)
+        db.commit()
+        
+        # Check if nginx is installed
+        rc, stdout, stderr = await client.execute_command("which nginx")
+        if rc != 0:
+            # Nginx not found, install it
+            log = TaskLog(
+                task_id=task_id,
+                level="INFO",
+                source="nginx",
+                message="Installing Nginx..."
+            )
+            db.add(log)
+            db.commit()
+            
+            # Detect OS and install nginx
+            rc, stdout, stderr = await client.execute_command("cat /etc/os-release")
+            if rc == 0 and ("ubuntu" in stdout.lower() or "debian" in stdout.lower()):
+                install_cmd = "apt update && apt install -y nginx"
+            elif rc == 0 and ("centos" in stdout.lower() or "rhel" in stdout.lower() or "fedora" in stdout.lower()):
+                install_cmd = "yum install -y nginx || dnf install -y nginx"
+            else:
+                install_cmd = "apt update && apt install -y nginx"  # Default to apt
+            
+            rc, stdout, stderr = await client.execute_command(install_cmd)
+            if rc != 0:
+                raise Exception(f"Failed to install Nginx: {stderr}")
+            
+            log = TaskLog(
+                task_id=task_id,
+                level="INFO",
+                source="nginx",
+                message="Nginx installed successfully"
+            )
+            db.add(log)
+            db.commit()
+        
+        # Create sites-available and sites-enabled directories if they don't exist
+        await client.execute_command("mkdir -p /etc/nginx/sites-available")
+        await client.execute_command("mkdir -p /etc/nginx/sites-enabled")
+        
+        # Check if main nginx.conf includes sites-enabled
+        rc, stdout, stderr = await client.execute_command("grep -q 'sites-enabled' /etc/nginx/nginx.conf")
+        if rc != 0:
+            # Add include directive for sites-enabled
+            include_line = "    include /etc/nginx/sites-enabled/*;"
+            await client.execute_command(f"sed -i '/http {{/a\\{include_line}' /etc/nginx/nginx.conf")
+        
+        task.progress = 45
         db.commit()
         
         # Upload configuration
