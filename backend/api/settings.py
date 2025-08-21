@@ -9,7 +9,7 @@ import logging
 
 from backend.database import get_db
 from backend.models import Setting, User
-from backend.auth import get_admin_user
+from backend.auth import get_admin_user, get_current_user_from_cookie
 from backend.crypto import encrypt_if_needed, decrypt_if_needed
 from backend.telegram_client import TelegramClient
 from backend.config import settings as app_settings
@@ -288,9 +288,15 @@ async def delete_setting(
 async def update_telegram_settings(
     telegram_data: TelegramSettingsUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    current_user: User = Depends(get_current_user_from_cookie)
 ):
     """Update Telegram notification settings."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
     updated_settings = []
     
     if telegram_data.bot_token is not None:
@@ -336,9 +342,15 @@ async def update_telegram_settings(
 @router.post("/telegram/test", response_model=TelegramTestResponse)
 async def test_telegram_connection(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    current_user: User = Depends(get_current_user_from_cookie)
 ):
     """Test Telegram bot connection and send a test message."""
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required"
+        )
+    
     try:
         # Get Telegram settings
         bot_token_setting = db.query(Setting).filter(Setting.key == "telegram.bot_token").first()
