@@ -1,0 +1,34 @@
+./check_routes_fix.py
+--2025-08-21 21:02:24--  https://raw.githubusercontent.com/globalduckmac/ProxySense/refs/heads/main/check_routes_fix.py
+Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 185.199.109.133, 185.199.108.133, 185.199.111.133, ...
+Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|185.199.109.133|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 3949 (3.9K) [text/plain]
+Saving to: ‘check_routes_fix.py’
+
+check_routes_fix.py                               100%[===========================================================================================================>]   3.86K  --.-KB/s    in 0s      
+
+2025-08-21 21:02:24 (55.9 MB/s) - ‘check_routes_fix.py’ saved [3949/3949]
+
+🔧 Проверка и исправление routes.py...
+⚠️ Основной маршрут / отсутствует
+✅ Добавлен основной маршрут /
+
+🔄 Перезапуск сервиса...
+✅ Сервис перезапущен
+
+📜 Проверка логов:
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: INFO:     Waiting for application shutdown.
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: 2025-08-21 21:02:24,757 - backend.server_monitor - INFO - Server monitoring service stopped
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: 2025-08-21 21:02:24,757 - backend.ns_monitor - INFO - NS monitoring loop cancelled
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: 2025-08-21 21:02:24,757 - backend.ns_monitor - INFO - NS monitoring service stopped
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: 2025-08-21 21:02:24,757 - backend.app - INFO - Shutting down Reverse Proxy & Monitor application...
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: INFO:     Application shutdown complete.
+Aug 21 21:02:24 testdeploy.aeza.network reverse-proxy-monitor[44682]: INFO:     Finished server process [44682]
+Aug 21 21:02:24 testdeploy.aeza.network systemd[1]: reverse-proxy-monitor.service: Deactivated successfully.
+Aug 21 21:02:24 testdeploy.aeza.network systemd[1]: Stopped Reverse Proxy Monitor.
+Aug 21 21:02:24 testdeploy.aeza.network systemd[1]: Started Reverse Proxy Monitor.
+
+🌐 Тестирование главной страницы...
+curl: (7) Failed to connect to localhost port 5000 after 0 ms: Connection refused
+root@testdeploy:/opt/reverse-proxy-monitor# 
