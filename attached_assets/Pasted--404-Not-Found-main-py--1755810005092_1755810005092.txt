@@ -1,0 +1,54 @@
+🔧 Диагностика проблемы 404 Not Found...
+📄 Содержимое main.py:
+==================================================
+"""
+Main entry point for the Reverse Proxy & Monitor application.
+"""
+import uvicorn
+from backend.app import app
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "backend.app:app",
+        host="0.0.0.0",
+        port=5000,
+        reload=True,
+        access_log=True
+    )
+
+==================================================
+⚠️ Отсутствуют импорты: ['from backend.api import auth', 'from backend.ui import routes']
+✅ backend/app.py выглядит корректно
+⚠️ Главный маршрут / отсутствует
+
+🔧 Исправляем main.py...
+✅ main.py исправлен
+
+❌ Найдены проблемы в файлах приложения
+Необходимо проверить:
+- backend/ui/routes.py
+
+🔍 Проверка статуса сервиса:
+● reverse-proxy-monitor.service - Reverse Proxy Monitor
+     Loaded: loaded (/etc/systemd/system/reverse-proxy-monitor.service; enabled; vendor preset: enabled)
+     Active: active (running) since Thu 2025-08-21 20:45:39 UTC; 13min ago
+   Main PID: 44543 (python)
+      Tasks: 3 (limit: 4564)
+     Memory: 164.5M
+        CPU: 5min 16.681s
+     CGroup: /system.slice/reverse-proxy-monitor.service
+             ├─44543 /opt/reverse-proxy-monitor/venv/bin/python main.py
+             ├─44545 /opt/reverse-proxy-monitor/venv/bin/python -c "from multiprocessing.resource_tracker import main;main(4)"
+             └─44546 /opt/reverse-proxy-monitor/venv/bin/python -c "from multiprocessing.spawn import spawn_main; spawn_main(tracker_fd=5, pipe_handle=7)" --multiprocessing-fork
+
+Aug 21 20:57:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:57:41,229 - backend.ns_monitor - INFO - NS check cycle completed
+Aug 21 20:57:43 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:57:43,899 - httpx - INFO - HTTP Request: GET http://138.124.108.209:61208/api/4/all "HTTP/1.1 200 OK"
+Aug 21 20:58:14 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:14,000 - httpx - INFO - HTTP Request: GET http://138.124.108.209:61208/api/4/all "HTTP/1.1 200 OK"
+Aug 21 20:58:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:41,231 - backend.ns_monitor - INFO - Starting NS check cycle...
+Aug 21 20:58:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:41,232 - backend.ns_monitor - INFO - Checking NS records for all domains...
+Aug 21 20:58:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:41,234 - backend.ns_monitor - INFO - Found 0 domains to check
+Aug 21 20:58:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:41,235 - backend.ns_monitor - INFO - All NS checks completed and committed to database
+Aug 21 20:58:41 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:41,235 - backend.ns_monitor - INFO - NS check cycle completed
+Aug 21 20:58:45 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:58:45,132 - httpx - INFO - HTTP Request: GET http://138.124.108.209:61208/api/4/all "HTTP/1.1 200 OK"
+Aug 21 20:59:15 testdeploy.aeza.network reverse-proxy-monitor[44546]: 2025-08-21 20:59:15,210 - httpx - INFO - HTTP Request: GET http://138.124.108.209:61208/api/4/all "HTTP/1.1 200 OK"
+root@testdeploy:/opt/reverse-proxy-monitor# 
