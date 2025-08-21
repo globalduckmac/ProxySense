@@ -247,51 +247,24 @@ clone_repository() {
 install_python_deps() {
     log "Установка Python зависимостей..."
     
-    sudo -u $APP_USER bash << EOF
+    if [[ $USE_ROOT == true ]]; then
+        su $APP_USER -c "cd $INSTALL_DIR && python3.11 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary pydantic pydantic-settings typer 'passlib[bcrypt]' 'python-jose[cryptography]' python-multipart httpx paramiko dnspython cryptography apscheduler jinja2 aiofiles"
+    else
+        sudo -u $APP_USER bash << EOF
 cd $INSTALL_DIR
 python3.11 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-
-# Попытка установить из requirements.txt или setup_requirements.txt
-if [[ -f "requirements.txt" ]]; then
-    pip install -r requirements.txt
-elif [[ -f "setup_requirements.txt" ]]; then
-    pip install -r setup_requirements.txt
-else
-    # Установка базовых зависимостей
-    pip install \
-        fastapi==0.104.1 \
-        "uvicorn[standard]==0.24.0" \
-        sqlalchemy==2.0.23 \
-        alembic==1.12.1 \
-        psycopg2-binary==2.9.9 \
-        pydantic==2.5.0 \
-        pydantic-settings==2.1.0 \
-        typer==0.9.0 \
-        "passlib[bcrypt]==1.7.4" \
-        "python-jose[cryptography]==3.3.0" \
-        python-multipart==0.0.6 \
-        httpx==0.25.2 \
-        paramiko==3.3.1 \
-        dnspython==2.4.2 \
-        cryptography==41.0.7 \
-        apscheduler==3.10.4 \
-        jinja2==3.1.2 \
-        aiofiles==23.2.1
-fi
+pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary pydantic pydantic-settings typer 'passlib[bcrypt]' 'python-jose[cryptography]' python-multipart httpx paramiko dnspython cryptography apscheduler jinja2 aiofiles
 EOF
+    fi
 }
 
 # Создание файла окружения
 create_env_file() {
     log "Создание файла окружения..."
     
-    if [[ $USE_ROOT == true ]]; then
-        su $APP_USER -c "cat > $INSTALL_DIR/.env" << EOF
-    else
-        sudo -u $APP_USER tee $INSTALL_DIR/.env > /dev/null << EOF
-    fi
+    cat > $INSTALL_DIR/.env << EOF
 # Database Configuration
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
 
@@ -315,6 +288,7 @@ PORT=$APP_PORT
 # SMTP_PASSWORD=your_app_password
 EOF
 
+    chown $APP_USER:$APP_USER $INSTALL_DIR/.env
     chmod 600 $INSTALL_DIR/.env
 }
 
