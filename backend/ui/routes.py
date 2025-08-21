@@ -515,8 +515,8 @@ async def login_post(
         value=access_token,
         max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
-        secure=False,  # Исправлено для работы с Nginx reverse proxy
-        samesite="lax"  # Исправлено для работы с Nginx reverse proxy
+        secure=False,
+        samesite="lax"
     )
     
     logger.info(f"User {user.username} logged in via web interface")
