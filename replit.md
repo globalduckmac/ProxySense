@@ -8,6 +8,17 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Custom Nginx Configuration Templates Implementation
+- **Date**: August 21, 2025
+- **Change**: Implemented user's custom Nginx configuration templates for HTTP and SSL domains
+- **Features**: 
+  - Custom HTTP-only template with specific proxy settings and WebSocket support
+  - Custom SSL template with dual HTTP/HTTPS blocks and Let's Encrypt integration
+  - Direct proxy_pass to upstream targets instead of upstream blocks
+  - Russian comments and user's specific proxy configuration preferences
+- **Implementation**: Updated `backend/nginx_templates.py` with new `_generate_http_config()` and `_generate_ssl_config()` methods
+- **Result**: Domain configurations now use user's exact Nginx templates with proper proxy settings
+
 ## Server Monitoring System Implementation
 - **Date**: August 21, 2025
 - **Change**: Implemented comprehensive automatic server monitoring system

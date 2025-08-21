@@ -61,68 +61,72 @@ class NginxConfig:
         return upstream_config
     
     @staticmethod
+    def _extract_first_upstream_target(upstream_config: str) -> str:
+        """Extract the first upstream target for direct proxy_pass."""
+        # Parse upstream config to find the first server line
+        lines = upstream_config.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line.startswith('server ') and ':' in line:
+                # Extract IP:port from "server IP:PORT;" or "server IP:PORT weight=N;"
+                server_part = line.split('server ')[1]
+                if ';' in server_part:
+                    server_part = server_part.split(';')[0]
+                if ' weight=' in server_part:
+                    server_part = server_part.split(' weight=')[0]
+                return server_part.strip()
+        # Fallback to localhost:80 if no upstream found
+        return "localhost:80"
+    
+    @staticmethod
     def _generate_http_config(domain: str, server_names: str, upstream_name: str, upstream_config: str) -> str:
         """Generate HTTP-only configuration."""
-        config = upstream_config
-        config += f"""server {{
-    listen 80;
-    server_name {server_names};
-    
-    # Logging
-    access_log /var/log/nginx/{domain}_access.log;
-    error_log /var/log/nginx/{domain}_error.log;
-    
-    # Basic security headers
-    add_header X-Content-Type-Options nosniff;
-    add_header X-Frame-Options DENY;
-    add_header X-XSS-Protection "1; mode=block";
-    
-    # Client upload limit
-    client_max_body_size 50m;
-    
-    # Proxy settings
-    location / {{
-        proxy_pass http://{upstream_name};
-        proxy_http_version 1.1;
+        # Extract first upstream target for direct proxy_pass
+        upstream_target = NginxConfig._extract_first_upstream_target(upstream_config)
         
-        # Preserve original request information
+        config = f"""server {{
+    listen 80;
+    listen [::]:80;
+    server_name {domain};
+    # Важно: не добавляйте здесь default_server, иначе возникнет конфликт с другими конфигурациями
+
+    access_log /var/log/nginx/{domain}.access.log;
+    error_log /var/log/nginx/{domain}.error.log;
+
+    # Proxy settings for HTTP traffic
+    location / {{
+        proxy_pass http://{upstream_target};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
         
         # WebSocket support
+        proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
+        set $conn "";
+        if ($http_upgrade = "websocket") {{
+            set $conn "upgrade";
+        }}
+        proxy_set_header Connection $conn;
         
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
-        
-        # Buffering
-        proxy_buffering on;
-        proxy_buffer_size 128k;
-        proxy_buffers 4 256k;
-        proxy_busy_buffers_size 256k;
-        
-        # Error handling
-        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
     }}
     
-    # Health check endpoint
-    location /nginx-health {{
-        access_log off;
-        return 200 "healthy\\n";
-        add_header Content-Type text/plain;
-    }}
+    # Additional security headers
+    # add_header X-Frame-Options "SAMEORIGIN" always;
+    # add_header X-Content-Type-Options "nosniff" always;
+    # add_header X-XSS-Protection "1; mode=block" always;
+    # add_header Referrer-Policy "no-referrer-when-downgrade" always;
     
-    # Security: Block common exploit attempts
-    location ~* \\.(env|git|svn|htaccess|htpasswd)$ {{
+    # Deny access to hidden files
+    location ~ /\\. {{
         deny all;
-        return 404;
+        access_log off;
+        log_not_found off;
     }}
 }}
 """
@@ -131,103 +135,68 @@ class NginxConfig:
     @staticmethod
     def _generate_ssl_config(domain: str, server_names: str, upstream_name: str, upstream_config: str) -> str:
         """Generate HTTPS configuration with SSL."""
-        config = upstream_config
-        config += f"""# HTTP to HTTPS redirect
+        # Extract first upstream target for direct proxy_pass
+        upstream_target = NginxConfig._extract_first_upstream_target(upstream_config)
+        
+        # Add www.domain.com to server names for SSL config
+        domain_with_www = f"{domain} www.{domain}"
+        
+        config = f"""#############################################
+# HTTP для {domain} – проксирование на порт 
+#############################################
 server {{
     listen 80;
-    server_name {server_names};
-    
-    # Let's Encrypt ACME challenge
-    location /.well-known/acme-challenge/ {{
-        root /var/www/html;
-    }}
-    
-    # Redirect all other traffic to HTTPS
-    location / {{
-        return 301 https://$server_name$request_uri;
-    }}
-}}
+    server_name {domain_with_www};
 
-# HTTPS server
-server {{
-    listen 443 ssl http2;
-    server_name {server_names};
-    
-    # SSL certificate (managed by Certbot)
-    ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
-    
-    # SSL configuration
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA;
-    ssl_prefer_server_ciphers off;
-    ssl_dhparam /etc/nginx/dhparam.pem;
-    
-    # SSL session caching
-    ssl_session_cache shared:SSL:1m;
-    ssl_session_timeout 10m;
-    
-    # OCSP stapling
-    ssl_stapling on;
-    ssl_stapling_verify on;
-    
-    # Logging
-    access_log /var/log/nginx/{domain}_access.log;
-    error_log /var/log/nginx/{domain}_error.log;
-    
-    # Security headers
-    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
-    add_header X-Content-Type-Options nosniff;
-    add_header X-Frame-Options DENY;
-    add_header X-XSS-Protection "1; mode=block";
-    add_header Referrer-Policy "strict-origin-when-cross-origin";
-    
-    # Client upload limit
-    client_max_body_size 50m;
-    
-    # Proxy settings
     location / {{
-        proxy_pass http://{upstream_name};
         proxy_http_version 1.1;
-        
-        # Preserve original request information
+        proxy_pass http://{upstream_target};
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header X-Forwarded-Host $host;
-        proxy_set_header X-Forwarded-Port $server_port;
-        
-        # WebSocket support
         proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        
-        # Timeouts
-        proxy_connect_timeout 60s;
-        proxy_send_timeout 60s;
-        proxy_read_timeout 60s;
-        
-        # Buffering
-        proxy_buffering on;
-        proxy_buffer_size 128k;
-        proxy_buffers 4 256k;
-        proxy_busy_buffers_size 256k;
-        
-        # Error handling
-        proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+
+        # Условно задаём заголовок Connection, используя переменную $conn
+        set $conn "";
+        if ($http_upgrade = "websocket") {{
+            set $conn "upgrade";
+        }}
+        proxy_set_header Connection $conn;
+
+        proxy_read_timeout 90;
     }}
-    
-    # Health check endpoint
-    location /nginx-health {{
-        access_log off;
-        return 200 "healthy\\n";
-        add_header Content-Type text/plain;
-    }}
-    
-    # Security: Block common exploit attempts
-    location ~* \\.(env|git|svn|htaccess|htpasswd)$ {{
-        deny all;
-        return 404;
+}}
+
+##########################################################
+# HTTPS для {domain} – проксирование на порт 
+##########################################################
+server {{
+    listen 443 ssl;
+    server_name {domain_with_www};
+
+    ssl_certificate     /etc/letsencrypt/live/{domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+
+    location / {{
+        proxy_http_version 1.1;
+        proxy_pass http://{upstream_target};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+
+        # Условно задаём заголовок Connection, используя переменную $conn
+        set $conn "";
+        if ($http_upgrade = "websocket") {{
+            set $conn "upgrade";
+        }}
+        proxy_set_header Connection $conn;
+
+        proxy_read_timeout 90;
     }}
 }}
 """
