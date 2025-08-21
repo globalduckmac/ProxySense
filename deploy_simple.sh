@@ -176,7 +176,7 @@ try:
         admin_user = User(
             username='admin',
             email='admin@localhost',
-            hashed_password=get_password_hash('admin123'),
+            password_hash=get_password_hash('admin123'),
             is_active=True,
             role='admin'
         )
