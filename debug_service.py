@@ -1,140 +1,176 @@
 #!/usr/bin/env python3
 """
-Отладка проблем запуска сервиса
+Диагностика проблем с сервисом reverse-proxy-monitor
+Запускать из /opt/reverse-proxy-monitor
 """
-
+import sys
 import os
 import subprocess
-import time
+import traceback
+
+def log(message):
+    print(f"[DEBUG] {message}")
+
+def run_command(cmd, capture_output=True):
+    """Выполнить команду и вернуть результат"""
+    try:
+        result = subprocess.run(cmd, shell=True, capture_output=capture_output, text=True)
+        return result.returncode, result.stdout, result.stderr
+    except Exception as e:
+        return -1, "", str(e)
 
 def check_service_status():
-    """Проверяет статус сервиса"""
-    print("🔍 Статус сервиса:")
-    os.system("systemctl status reverse-proxy-monitor --no-pager")
+    """Проверить статус сервиса"""
+    log("Проверка статуса сервиса...")
     
+    retcode, stdout, stderr = run_command("systemctl status reverse-proxy-monitor")
+    print("=== СТАТУС СЕРВИСА ===")
+    print(stdout)
+    if stderr:
+        print("STDERR:", stderr)
+    print()
+
 def check_service_logs():
-    """Показывает последние логи сервиса"""
-    print("\n📜 Последние 30 строк логов:")
-    os.system("journalctl -u reverse-proxy-monitor --no-pager -n 30")
+    """Проверить логи сервиса"""
+    log("Проверка логов сервиса...")
+    
+    retcode, stdout, stderr = run_command("journalctl -u reverse-proxy-monitor --no-pager -n 20")
+    print("=== ЛОГИ СЕРВИСА ===")
+    print(stdout)
+    if stderr:
+        print("STDERR:", stderr)
+    print()
 
-def test_manual_start():
-    """Тестирует ручной запуск приложения"""
-    print("\n🧪 Тестирование ручного запуска:")
-    print("Попытка запуска приложения вручную...")
+def check_environment():
+    """Проверить окружение"""
+    log("Проверка окружения...")
     
-    os.chdir("/opt/reverse-proxy-monitor")
+    print("=== ОКРУЖЕНИЕ ===")
+    print(f"Текущая директория: {os.getcwd()}")
+    print(f"Python путь: {sys.executable}")
+    print(f"Python версия: {sys.version}")
     
-    # Активируем виртуальное окружение и запускаем
-    result = subprocess.run([
-        "/bin/bash", "-c", 
-        "cd /opt/reverse-proxy-monitor && source venv/bin/activate && python main.py &"
-    ], capture_output=True, text=True, timeout=10)
-    
-    print("STDOUT:", result.stdout)
-    print("STDERR:", result.stderr)
-    print("Return code:", result.returncode)
-    
-    # Дадим время на запуск
-    time.sleep(3)
-    
-    # Проверим порт
-    port_result = subprocess.run(["netstat", "-tlnp", "|", "grep", "5000"], 
-                                shell=True, capture_output=True, text=True)
-    print("\nПорт 5000:", port_result.stdout)
-
-def check_dependencies():
-    """Проверяет зависимости"""
-    print("\n📦 Проверка зависимостей:")
-    
-    os.chdir("/opt/reverse-proxy-monitor")
-    
-    # Проверяем установку пакетов
-    result = subprocess.run([
-        "/bin/bash", "-c",
-        "cd /opt/reverse-proxy-monitor && source venv/bin/activate && pip list | grep -E '(fastapi|uvicorn|sqlalchemy)'"
-    ], capture_output=True, text=True)
-    
-    print("Установленные пакеты:")
-    print(result.stdout)
-    
-    if result.stderr:
-        print("Ошибки:", result.stderr)
-
-def check_python_syntax():
-    """Проверяет синтаксис Python файлов"""
-    print("\n🐍 Проверка синтаксиса:")
-    
+    # Проверяем файлы
     files_to_check = [
-        "/opt/reverse-proxy-monitor/main.py",
-        "/opt/reverse-proxy-monitor/backend/app.py",
-        "/opt/reverse-proxy-monitor/backend/ui/routes.py"
+        'main.py', 
+        'backend/app.py', 
+        'backend/models.py',
+        'backend/config.py',
+        'venv/bin/python',
+        '.env'
     ]
     
-    for file_path in files_to_check:
-        if os.path.exists(file_path):
-            result = subprocess.run([
-                "python3", "-m", "py_compile", file_path
-            ], capture_output=True, text=True)
+    for file in files_to_check:
+        exists = "✅" if os.path.exists(file) else "❌"
+        print(f"{exists} {file}")
+    print()
+
+def test_import():
+    """Тестировать импорты"""
+    log("Тестирование импортов...")
+    
+    print("=== ТЕСТ ИМПОРТОВ ===")
+    
+    # Добавляем текущую директорию в путь
+    sys.path.insert(0, '/opt/reverse-proxy-monitor')
+    
+    modules_to_test = [
+        'backend.config',
+        'backend.database', 
+        'backend.models',
+        'backend.app',
+        'backend.api.auth',
+        'backend.ui.routes'
+    ]
+    
+    for module in modules_to_test:
+        try:
+            __import__(module)
+            print(f"✅ {module}")
+        except Exception as e:
+            print(f"❌ {module}: {e}")
+            traceback.print_exc()
+    print()
+
+def test_database():
+    """Тестировать подключение к БД"""
+    log("Тестирование подключения к базе данных...")
+    
+    print("=== ТЕСТ БАЗЫ ДАННЫХ ===")
+    sys.path.insert(0, '/opt/reverse-proxy-monitor')
+    
+    try:
+        from backend.database import engine, SessionLocal
+        from backend.models import User
+        
+        # Тестируем подключение
+        with engine.connect() as conn:
+            print("✅ Подключение к БД успешно")
+        
+        # Тестируем сессию
+        db = SessionLocal()
+        users = db.query(User).count()
+        print(f"✅ Количество пользователей: {users}")
+        db.close()
+        
+    except Exception as e:
+        print(f"❌ Ошибка БД: {e}")
+        traceback.print_exc()
+    print()
+
+def test_run_main():
+    """Попробовать запустить main.py напрямую"""
+    log("Попытка запуска main.py...")
+    
+    print("=== ТЕСТ ЗАПУСКА MAIN.PY ===")
+    
+    # Проверяем виртуальное окружение
+    venv_python = "/opt/reverse-proxy-monitor/venv/bin/python"
+    if os.path.exists(venv_python):
+        print(f"✅ venv Python найден: {venv_python}")
+        
+        # Пробуем запустить с таймаутом
+        try:
+            cmd = f"cd /opt/reverse-proxy-monitor && timeout 10s {venv_python} main.py"
+            retcode, stdout, stderr = run_command(cmd)
             
-            if result.returncode == 0:
-                print(f"✅ {file_path} - синтаксис OK")
-            else:
-                print(f"❌ {file_path} - ошибка синтаксиса:")
-                print(result.stderr)
+            print(f"Return code: {retcode}")
+            if stdout:
+                print("STDOUT:")
+                print(stdout)
+            if stderr:
+                print("STDERR:")
+                print(stderr)
+                
+        except Exception as e:
+            print(f"❌ Ошибка запуска: {e}")
+    else:
+        print(f"❌ venv Python не найден: {venv_python}")
+    print()
 
-def check_permissions():
-    """Проверяет права доступа"""
-    print("\n🔐 Проверка прав доступа:")
-    os.system("ls -la /opt/reverse-proxy-monitor/ | head -10")
+def main():
+    print("🔍 ДИАГНОСТИКА REVERSE-PROXY-MONITOR")
+    print("=" * 50)
     
-    print("\nПользователь rpmonitor:")
-    os.system("id rpmonitor")
-
-def fix_service_issues():
-    """Пытается исправить проблемы сервиса"""
-    print("\n🔧 Исправление проблем:")
+    # Переходим в рабочую директорию
+    try:
+        os.chdir('/opt/reverse-proxy-monitor')
+    except Exception as e:
+        print(f"❌ Не удалось перейти в /opt/reverse-proxy-monitor: {e}")
+        return
     
-    # Останавливаем сервис
-    print("Останавливаем сервис...")
-    os.system("systemctl stop reverse-proxy-monitor")
-    
-    # Проверяем что процессы убиты
-    print("Убиваем все процессы Python...")
-    os.system("pkill -f 'python.*main.py' || true")
-    
-    # Меняем владельца файлов
-    print("Исправляем права доступа...")
-    os.system("chown -R rpmonitor:rpmonitor /opt/reverse-proxy-monitor/")
-    
-    # Перезагружаем systemd
-    print("Перезагружаем systemd...")
-    os.system("systemctl daemon-reload")
-    
-    # Запускаем сервис
-    print("Запускаем сервис...")
-    os.system("systemctl start reverse-proxy-monitor")
-    
-    # Даем время на запуск
-    time.sleep(5)
-    
-    print("Проверяем статус...")
-    os.system("systemctl status reverse-proxy-monitor --no-pager")
-
-if __name__ == "__main__":
-    print("🔧 Отладка проблем сервиса reverse-proxy-monitor...")
-    
+    check_environment()
     check_service_status()
     check_service_logs()
-    check_python_syntax()
-    check_dependencies()
-    check_permissions()
+    test_import()
+    test_database()
+    test_run_main()
     
-    print("\n" + "="*50)
-    print("ПОПЫТКА ИСПРАВЛЕНИЯ")
-    print("="*50)
-    
-    fix_service_issues()
-    
-    print("\n🌐 Финальное тестирование:")
-    time.sleep(2)
-    os.system("curl -I http://localhost:5000/ || echo 'Соединение не удалось'")
+    print("🎯 РЕКОМЕНДАЦИИ:")
+    print("1. Проверьте логи сервиса выше на наличие ошибок")
+    print("2. Убедитесь что все модули импортируются корректно")
+    print("3. Проверьте настройки базы данных")
+    print("4. При необходимости перезапустите сервис: systemctl restart reverse-proxy-monitor")
+
+if __name__ == "__main__":
+    main()
