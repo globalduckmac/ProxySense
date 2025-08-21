@@ -58,9 +58,12 @@ class NSMonitorService:
         """Main monitoring loop."""
         while self.running:
             try:
+                logger.info("Starting NS check cycle...")
                 await self._check_all_domains()
-                await asyncio.sleep(300)  # Check every 5 minutes for NS
+                logger.info("NS check cycle completed")
+                await asyncio.sleep(60)  # Check every 1 minute for testing, then change to 300
             except asyncio.CancelledError:
+                logger.info("NS monitoring loop cancelled")
                 break
             except Exception as e:
                 logger.error(f"Error in NS monitoring loop: {e}", exc_info=True)
@@ -68,18 +71,22 @@ class NSMonitorService:
     
     async def _check_all_domains(self):
         """Check NS records for all domains."""
-        logger.debug("Checking NS records for all domains...")
+        logger.info("Checking NS records for all domains...")
         
         with SessionLocal() as db:
             domains = db.query(Domain).all()
+            logger.info(f"Found {len(domains)} domains to check")
             
             for domain in domains:
                 try:
+                    logger.info(f"Checking NS for domain: {domain.domain}")
                     await self._check_domain_ns(db, domain)
+                    logger.info(f"NS check completed for domain: {domain.domain}")
                 except Exception as e:
                     logger.error(f"Error checking NS for domain {domain.domain}: {e}")
                     
             db.commit()
+            logger.info("All NS checks completed and committed to database")
     
     async def _check_domain_ns(self, db: Session, domain: Domain):
         """Check NS records for a single domain."""
