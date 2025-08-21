@@ -58,7 +58,9 @@
                     <th>Upstream</th>
                     <th>Group</th>
                     <th>NS Policy</th>
-                    <th>Last NS Check</th>
+                    <th>Last NS Check 
+                        <button onclick="location.reload()" style="margin-left: 8px; padding: 2px 6px; font-size: 11px; background: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer;" title="Refresh NS times">🔄</button>
+                    </th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -603,9 +605,20 @@ function updateNSCheckTimes() {
 }
 
 // Auto-refresh page every 2 minutes to update NS check times
+console.log('Setting up auto-refresh for domains page');
 setInterval(() => {
     console.log('Auto-refreshing domains page for NS updates');
-    location.reload();
+    window.location.reload();
 }, 120000); // 2 minutes
+
+// Also refresh when page becomes visible
+document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) {
+        console.log('Page visible, checking for NS updates');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+    }
+});
 </script>
 {% endblock %}
