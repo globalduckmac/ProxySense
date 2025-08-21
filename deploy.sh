@@ -109,15 +109,20 @@ get_settings() {
     fi
 }
 
-# Обновление системы
+# Исправление APT и обновление системы
 update_system() {
+    log "Исправление проблем с APT..."
+    # Отключаем проблематичный cnf-update-db
+    rm -f /usr/lib/cnf-update-db /etc/apt/apt.conf.d/50command-not-found
+    export DEBIAN_FRONTEND=noninteractive
+    
     log "Обновление системы..."
     if [[ $USE_ROOT == true ]]; then
-        apt update
-        apt upgrade -y
+        apt update 2>/dev/null || warn "APT обновление с предупреждениями, продолжаем..."
+        apt upgrade -y 2>/dev/null || warn "APT upgrade с предупреждениями, продолжаем..."
     else
-        sudo apt update
-        sudo apt upgrade -y
+        sudo apt update 2>/dev/null || warn "APT обновление с предупреждениями, продолжаем..."
+        sudo apt upgrade -y 2>/dev/null || warn "APT upgrade с предупреждениями, продолжаем..."
     fi
 }
 
@@ -159,36 +164,28 @@ install_system_deps() {
     fi
 }
 
-# Установка Python 3.11
+# Установка Python (используем системный без PPA)
 install_python() {
-    log "Установка Python 3.11..."
+    log "Установка Python..."
     
     if [[ $USE_ROOT == true ]]; then
-        # Добавление PPA для Python 3.11
-        add-apt-repository ppa:deadsnakes/ppa -y
-        apt update
-        
         apt install -y \
-            python3.11 \
-            python3.11-dev \
-            python3.11-venv \
-            python3-pip
-        
-        # Создание симлинка
-        ln -sf /usr/bin/python3.11 /usr/bin/python3
+            python3 \
+            python3-dev \
+            python3-venv \
+            python3-pip \
+            build-essential \
+            libpq-dev \
+            pkg-config
     else
-        # Добавление PPA для Python 3.11
-        sudo add-apt-repository ppa:deadsnakes/ppa -y
-        sudo apt update
-        
         sudo apt install -y \
-            python3.11 \
-            python3.11-dev \
-            python3.11-venv \
-            python3-pip
-        
-        # Создание симлинка
-        sudo ln -sf /usr/bin/python3.11 /usr/bin/python3
+            python3 \
+            python3-dev \
+            python3-venv \
+            python3-pip \
+            build-essential \
+            libpq-dev \
+            pkg-config
     fi
 }
 
