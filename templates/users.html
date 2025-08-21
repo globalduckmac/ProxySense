@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - Reverse Proxy & Monitor</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    <style>
+        .user-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-left: 4px solid #4CAF50;
+        }
+
+        .user-card.inactive {
+            border-left-color: #f44336;
+            opacity: 0.7;
+        }
+
+        .user-card.admin {
+            border-left-color: #2196F3;
+        }
+
+        .user-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .user-info {
+            flex-grow: 1;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .role-badge {
+            background: #e3f2fd;
+            color: #1976d2;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        .role-badge.admin {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+
+        .status-badge {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+        }
+
+        .status-badge.inactive {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .user-meta {
+            color: #666;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .user-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .action-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-password {
+            background: #2196F3;
+            color: white;
+        }
+
+        .btn-toggle {
+            background: #ff9800;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-create {
+            background: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 15% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90%;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .alert {
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <div class="header-title">
+                <h1>👥 User Management</h1>
+            </div>
+            <nav class="nav">
+                <a href="/">🏠 Dashboard</a>
+                <a href="/servers">🖥️ Servers</a>
+                <a href="/domains">🌐 Domains</a>
+                <a href="/users" class="active">👥 Users</a>
+                <a href="/settings">⚙️ Settings</a>
+            </nav>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Alert Messages -->
+        <div id="alerts"></div>
+
+        <!-- Create User Button (Admin Only) -->
+        <div id="admin-controls" style="display: none;">
+            <button class="action-btn btn-create" onclick="showCreateUserModal()">+ Create New User</button>
+        </div>
+
+        <!-- Users List -->
+        <div id="users-container">
+            <!-- Users will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div id="createUserModal" class="modal">
+        <div class="modal-content">
+            <h3>Create New User</h3>
+            <form id="createUserForm" action="/api/users/ui/create" method="POST">
+                <div class="form-group">
+                    <label for="username">Username:</label>
+                    <input type="text" id="username" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email (optional):</label>
+                    <input type="email" id="email" name="email">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="role">Role:</label>
+                    <select id="role" name="role">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="action-btn" onclick="hideCreateUserModal()">Cancel</button>
+                    <button type="submit" class="action-btn btn-create">Create User</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div id="passwordModal" class="modal">
+        <div class="modal-content">
+            <h3>Change Password</h3>
+            <form id="passwordForm" method="POST">
+                <div id="currentPasswordGroup" class="form-group">
+                    <label for="currentPassword">Current Password:</label>
+                    <input type="password" id="currentPassword" name="current_password">
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">New Password:</label>
+                    <input type="password" id="newPassword" name="new_password" required>
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password:</label>
+                    <input type="password" id="confirmPassword" required>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="action-btn" onclick="hidePasswordModal()">Cancel</button>
+                    <button type="submit" class="action-btn btn-password">Update Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let users = [];
+
+        // Load users on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            showAlerts();
+            loadUsers();
+        });
+
+        function showAlerts() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const success = urlParams.get('success');
+            const error = urlParams.get('error');
+            
+            const alertsContainer = document.getElementById('alerts');
+            
+            if (success) {
+                alertsContainer.innerHTML = `<div class="alert alert-success">${success}</div>`;
+            } else if (error) {
+                alertsContainer.innerHTML = `<div class="alert alert-error">${error}</div>`;
+            }
+            
+            // Clear URL parameters
+            if (success || error) {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch('/api/users/');
+                const data = await response.json();
+                
+                if (response.ok) {
+                    users = data;
+                    renderUsers();
+                    
+                    // Check if current user is admin
+                    const adminUser = users.find(u => u.role === 'admin');
+                    if (adminUser && users.length > 1) {
+                        document.getElementById('admin-controls').style.display = 'block';
+                    }
+                } else {
+                    showError('Failed to load users');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showError('Failed to load users');
+            }
+        }
+
+        function renderUsers() {
+            const container = document.getElementById('users-container');
+            
+            if (users.length === 0) {
+                container.innerHTML = '<p>No users found.</p>';
+                return;
+            }
+
+            container.innerHTML = users.map(user => `
+                <div class="user-card ${!user.is_active ? 'inactive' : ''} ${user.role === 'admin' ? 'admin' : ''}">
+                    <div class="user-header">
+                        <div class="user-info">
+                            <div class="user-name">
+                                ${user.username}
+                                <span class="role-badge ${user.role}">${user.role}</span>
+                                <span class="status-badge ${!user.is_active ? 'inactive' : ''}">${user.is_active ? 'Active' : 'Inactive'}</span>
+                            </div>
+                            <div class="user-meta">
+                                ${user.email ? `📧 ${user.email}` : '📧 No email'}
+                                <br>
+                                📅 Created: ${new Date(user.created_at).toLocaleDateString()}
+                                ${user.last_login_at ? `<br>🕐 Last login: ${new Date(user.last_login_at).toLocaleDateString()}` : ''}
+                            </div>
+                        </div>
+                        <div class="user-actions">
+                            <button class="action-btn btn-password" onclick="showPasswordModal(${user.id}, '${user.username}')">
+                                🔑 Change Password
+                            </button>
+                            ${user.role !== 'admin' ? `
+                                <form style="display: inline;" action="/api/users/ui/${user.id}/toggle" method="POST">
+                                    <button type="submit" class="action-btn btn-toggle">
+                                        ${user.is_active ? '🔒 Deactivate' : '🔓 Activate'}
+                                    </button>
+                                </form>
+                                <form style="display: inline;" action="/api/users/ui/${user.id}/delete" method="POST" 
+                                      onsubmit="return confirm('Are you sure you want to delete user ${user.username}?')">
+                                    <button type="submit" class="action-btn btn-delete">🗑️ Delete</button>
+                                </form>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showCreateUserModal() {
+            document.getElementById('createUserModal').style.display = 'block';
+        }
+
+        function hideCreateUserModal() {
+            document.getElementById('createUserModal').style.display = 'none';
+            document.getElementById('createUserForm').reset();
+        }
+
+        function showPasswordModal(userId, username) {
+            const modal = document.getElementById('passwordModal');
+            const form = document.getElementById('passwordForm');
+            const currentPasswordGroup = document.getElementById('currentPasswordGroup');
+            
+            // Set form action
+            form.action = `/api/users/ui/${userId}/password`;
+            
+            // Show/hide current password field based on whether user is admin
+            const isCurrentUserAdmin = users.some(u => u.role === 'admin');
+            const isTargetCurrentUser = users.length === 1; // If only one user shown, it's current user
+            
+            if (isCurrentUserAdmin && !isTargetCurrentUser) {
+                // Admin changing another user's password - no current password needed
+                currentPasswordGroup.style.display = 'none';
+                document.getElementById('currentPassword').removeAttribute('required');
+            } else {
+                // User changing own password - current password required
+                currentPasswordGroup.style.display = 'block';
+                document.getElementById('currentPassword').setAttribute('required', 'required');
+            }
+            
+            modal.style.display = 'block';
+        }
+
+        function hidePasswordModal() {
+            document.getElementById('passwordModal').style.display = 'none';
+            document.getElementById('passwordForm').reset();
+        }
+
+        // Form validation
+        document.getElementById('passwordForm').addEventListener('submit', function(e) {
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            if (newPassword !== confirmPassword) {
+                e.preventDefault();
+                alert('New password and confirmation do not match!');
+            }
+        });
+
+        // Close modals when clicking outside
+        window.addEventListener('click', function(event) {
+            const createModal = document.getElementById('createUserModal');
+            const passwordModal = document.getElementById('passwordModal');
+            
+            if (event.target === createModal) {
+                hideCreateUserModal();
+            }
+            if (event.target === passwordModal) {
+                hidePasswordModal();
+            }
+        });
+
+        function showError(message) {
+            const alertsContainer = document.getElementById('alerts');
+            alertsContainer.innerHTML = `<div class="alert alert-error">${message}</div>`;
+        }
+    </script>
+</body>
+</html>

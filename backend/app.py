@@ -11,7 +11,7 @@ import logging
 
 from backend.config import settings
 from backend.database import engine, Base
-from backend.api import auth, servers, upstreams, domains, groups, tasks, alerts, settings as settings_api
+from backend.api import auth, servers, upstreams, domains, groups, tasks, alerts, settings as settings_api, users
 from backend.ui.routes import router as ui_router
 
 # Configure logging
@@ -79,6 +79,7 @@ app.include_router(groups.router, prefix="/api/groups", tags=["Groups"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["Tasks"])
 app.include_router(alerts.router, prefix="/api/alerts", tags=["Alerts"])
 app.include_router(settings_api.router, prefix="/api/settings", tags=["Settings"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
 
 # Include UI router
 app.include_router(ui_router)

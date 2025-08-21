@@ -462,6 +462,22 @@ async def settings_page(
     })
 
 
+@router.get("/users", response_class=HTMLResponse)
+async def users_page(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """Users management page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
+    return templates.TemplateResponse("users.html", {
+        "request": request,
+        "current_user": current_user
+    })
+
+
 @router.get("/auth/login", response_class=HTMLResponse)
 async def login_page(request: Request):
     """Login page."""
