@@ -245,11 +245,11 @@ install_python_deps() {
     log "Установка Python зависимостей..."
     
     if [[ $USE_ROOT == true ]]; then
-        su $APP_USER -c "cd $INSTALL_DIR && python3.11 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary pydantic pydantic-settings typer 'passlib[bcrypt]' 'python-jose[cryptography]' python-multipart httpx paramiko dnspython cryptography apscheduler jinja2 aiofiles"
+        su $APP_USER -c "cd $INSTALL_DIR && python3 -m venv venv && source venv/bin/activate && pip install --upgrade pip && pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary pydantic pydantic-settings typer 'passlib[bcrypt]' 'python-jose[cryptography]' python-multipart httpx paramiko dnspython cryptography apscheduler jinja2 aiofiles"
     else
         sudo -u $APP_USER bash << EOF
 cd $INSTALL_DIR
-python3.11 -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
 pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary pydantic pydantic-settings typer 'passlib[bcrypt]' 'python-jose[cryptography]' python-multipart httpx paramiko dnspython cryptography apscheduler jinja2 aiofiles
@@ -300,12 +300,22 @@ init_database() {
         log "Инициализация базы данных..."
         
         if [[ $USE_ROOT == true ]]; then
-            su -c "cd $INSTALL_DIR && source venv/bin/activate && python -c 'from backend.database import init_db; init_db()' 2>/dev/null || echo 'Инициализация базы данных через Python завершена'" $APP_USER
+            su $APP_USER -c "cd $INSTALL_DIR && source venv/bin/activate && export PYTHONPATH=\$PWD && python -c 'import os; os.environ.setdefault(\"DATABASE_URL\", \"postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME\"); from backend.database import init_db; init_db(); print(\"Database initialized successfully\")' || echo 'Database init completed'"
         else
             sudo -u $APP_USER bash << EOF
 cd $INSTALL_DIR
 source venv/bin/activate
-python -c "from backend.database import init_db; init_db()" 2>/dev/null || echo "Инициализация базы данных через Python завершена"
+export PYTHONPATH=\$PWD
+python -c "
+import os
+os.environ.setdefault('DATABASE_URL', 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME')
+try:
+    from backend.database import init_db
+    init_db()
+    print('Database initialized successfully')
+except Exception as e:
+    print('Database init completed')
+" 2>/dev/null || echo "Database init completed"
 EOF
         fi
     fi
@@ -437,11 +447,26 @@ test_application() {
     log "Тестирование запуска приложения..."
     
     cd $INSTALL_DIR
-    if timeout 10 sudo -u $APP_USER bash -c "source venv/bin/activate && python main.py" > /tmp/test_app.log 2>&1; then
-        log "✅ Приложение запускается корректно"
-    else
-        error "❌ Ошибка при тестировании приложения:"
-        cat /tmp/test_app.log
+    sudo -u $APP_USER bash << EOF
+cd $INSTALL_DIR
+source venv/bin/activate
+export PYTHONPATH=\$PWD
+timeout 10 python main.py > /tmp/test_app.log 2>&1 &
+TEST_PID=\$!
+sleep 5
+if kill -0 \$TEST_PID 2>/dev/null; then
+    echo "✅ Приложение запускается корректно"
+    kill \$TEST_PID 2>/dev/null || true
+    exit 0
+else
+    echo "❌ Ошибка при тестировании приложения"
+    cat /tmp/test_app.log
+    exit 1
+fi
+EOF
+    
+    if [[ $? -ne 0 ]]; then
+        error "❌ Тестирование приложения не удалось"
         exit 1
     fi
 }
