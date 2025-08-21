@@ -1,0 +1,15 @@
+root@testdeploy:/opt/reverse-proxy-monitor# journalctl -u reverse-proxy-monitor -f
+Aug 21 19:50:50 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "GET /auth/login HTTP/1.0" 200 OK
+Aug 21 19:50:59 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:50:59,435 - backend.ui.routes - INFO - User admin logged in via web interface
+Aug 21 19:50:59 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "POST /auth/login HTTP/1.0" 302 Found
+Aug 21 19:50:59 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 302 Found
+Aug 21 19:50:59 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "GET /auth/login HTTP/1.0" 200 OK
+Aug 21 19:51:04 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:51:04,136 - backend.ns_monitor - INFO - Starting NS check cycle...
+Aug 21 19:51:04 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:51:04,136 - backend.ns_monitor - INFO - Checking NS records for all domains...
+Aug 21 19:51:04 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:51:04,138 - backend.ns_monitor - INFO - Found 0 domains to check
+Aug 21 19:51:04 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:51:04,138 - backend.ns_monitor - INFO - All NS checks completed and committed to database
+Aug 21 19:51:04 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:51:04,138 - backend.ns_monitor - INFO - NS check cycle completed
+Aug 21 19:51:21 testdeploy.aeza.network reverse-proxy-monitor[44217]: 2025-08-21 19:51:21,470 - backend.ui.routes - INFO - User admin logged in via web interface
+Aug 21 19:51:21 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "POST /auth/login HTTP/1.0" 302 Found
+Aug 21 19:51:21 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "GET / HTTP/1.0" 302 Found
+Aug 21 19:51:21 testdeploy.aeza.network reverse-proxy-monitor[44217]: INFO:     213.137.89.4:0 - "GET /auth/login HTTP/1.0" 200 OK
