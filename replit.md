@@ -8,6 +8,20 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Glances API Version Update & Server Monitoring Enhancement
+- **Date**: August 21, 2025
+- **Change**: Fixed Glances API version issues and added individual server monitoring pages
+- **Glances API Fix**: Updated from `/api/3/` to `/api/4/` across all components (models, client, existing servers)
+- **Authentication Fix**: Resolved 401 Unauthorized errors in dashboard stream and stats endpoints
+- **New Feature**: Added dedicated server monitoring pages with real-time Glances data visualization
+- **Implementation**: 
+  - Updated `backend/models.py`, `backend/glances_client.py`, `backend/api/servers.py` for API v4
+  - Modified existing server database record to use correct API path
+  - Added `/servers/{id}/monitor` route with comprehensive system metrics display
+  - Fixed dashboard authentication to prevent 401 errors
+  - Added "Monitor" button to server management interface
+- **Result**: Working Glances integration with real-time CPU, memory, disk, and process monitoring
+
 ## DNS Verification System Update
 - **Date**: August 21, 2025
 - **Change**: Modified DNS verification to check only NS (nameserver) records instead of A records

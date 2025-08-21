@@ -45,12 +45,23 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
 @router.get("/api/ui/dashboard/stream")
 async def dashboard_stream(
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    db: Session = Depends(get_db)
 ):
     """Server-sent events endpoint for real-time dashboard updates."""
+    # Get user from cookie but don't require authentication for dashboard stream
+    current_user = get_current_user_optional(request, db)
     if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        # Return empty data for non-authenticated users instead of 401
+        from fastapi.responses import StreamingResponse
+        import json
+        import asyncio
+        
+        async def empty_stream():
+            while True:
+                yield f"data: {json.dumps({})}\n\n"
+                await asyncio.sleep(5)
+        
+        return StreamingResponse(empty_stream(), media_type="text/plain")
     
     from fastapi.responses import StreamingResponse
     import json
@@ -137,12 +148,20 @@ async def index(
 @router.get("/api/ui/dashboard/stats")
 async def dashboard_stats_api(
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user_optional)
+    db: Session = Depends(get_db)
 ):
     """API endpoint for dashboard statistics."""
+    # Get user from cookie but don't require authentication for dashboard stats
+    current_user = get_current_user_optional(request, db)
     if not current_user:
-        raise HTTPException(status_code=401, detail="Not authenticated")
+        # Return empty stats for non-authenticated users
+        return {
+            "total_servers": 0,
+            "online_servers": 0,
+            "total_domains": 0,
+            "ssl_domains": 0,
+            "unresolved_alerts": 0
+        }
     
     # Gather dashboard statistics
     total_servers = db.query(func.count(Server.id)).scalar() or 0
@@ -177,6 +196,65 @@ async def servers_page(
         "current_user": current_user,
         "servers": servers
     })
+
+
+@router.get("/servers/{server_id}/monitor", response_class=HTMLResponse)
+async def server_monitor_page(
+    server_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """Individual server monitoring page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+    
+    server = db.query(Server).filter(Server.id == server_id).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    return templates.TemplateResponse("server_monitor.html", {
+        "request": request,
+        "current_user": current_user,
+        "server": server
+    })
+
+
+@router.get("/api/servers/{server_id}/glances-data")
+async def get_server_glances_data(
+    server_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """Get real-time Glances data for a specific server."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    server = db.query(Server).filter(Server.id == server_id).first()
+    if not server:
+        raise HTTPException(status_code=404, detail="Server not found")
+    
+    # Build Glances URL
+    glances_url = f"{server.glances_scheme}://{server.glances_host or server.host}:{server.glances_port}{server.glances_path}"
+    
+    # Get authentication if configured
+    auth = None
+    from backend.models import GlancesAuthType
+    if server.glances_auth_type == GlancesAuthType.BASIC and server.glances_username:
+        # For now, just use the password as-is (encryption can be added later)
+        # from backend.encryption import decrypt_if_needed
+        password = server.glances_password if server.glances_password else ""
+        auth = (server.glances_username, password)
+    
+    # Fetch data from Glances
+    from backend.glances_client import GlancesClient
+    client = GlancesClient()
+    data = await client.get_all_stats(glances_url, auth)
+    
+    if data:
+        return {"success": True, "data": data}
+    else:
+        return {"success": False, "error": "Failed to fetch Glances data"}
 
 
 @router.get("/upstreams", response_class=HTMLResponse)

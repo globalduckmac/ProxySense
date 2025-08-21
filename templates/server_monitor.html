@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Server Monitor - {{ server.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-server"></i> {{ server.name }} Monitor
+                    <span id="server-status" class="badge badge-secondary">Checking...</span>
+                </h1>
+                <div class="btn-group">
+                    <a href="/servers" class="btn btn-outline-secondary">
+                        <i class="fas fa-arrow-left"></i> Back to Servers
+                    </a>
+                    <button id="refresh-btn" class="btn btn-primary">
+                        <i class="fas fa-sync-alt"></i> Refresh
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Server Info Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-info-circle"></i> Server Information</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Host:</strong> {{ server.host }}:{{ server.port }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Status:</strong> 
+                            <span class="badge badge-{{ 'success' if server.status.value == 'ok' else 'danger' if server.status.value == 'unreachable' else 'warning' }}">
+                                {{ server.status.value.title() }}
+                            </span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Glances:</strong> {{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Created:</strong> {{ server.created_at.strftime('%Y-%m-%d %H:%M') }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Monitoring Data -->
+    <div id="monitoring-data" style="display: none;">
+        <!-- System Overview -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-microchip fa-2x mr-3"></i>
+                            <div>
+                                <h6 class="card-title mb-0">CPU Usage</h6>
+                                <h4 id="cpu-usage" class="mb-0">--%</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-memory fa-2x mr-3"></i>
+                            <div>
+                                <h6 class="card-title mb-0">Memory Usage</h6>
+                                <h4 id="memory-usage" class="mb-0">--%</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-hdd fa-2x mr-3"></i>
+                            <div>
+                                <h6 class="card-title mb-0">Disk Usage</h6>
+                                <h4 id="disk-usage" class="mb-0">--%</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-clock fa-2x mr-3"></i>
+                            <div>
+                                <h6 class="card-title mb-0">Uptime</h6>
+                                <h4 id="uptime" class="mb-0">--</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Information -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-microchip"></i> CPU Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="cpu-details">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-memory"></i> Memory Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="memory-details">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-hdd"></i> Disk Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="disk-details">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-network-wired"></i> Network Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="network-details">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-list"></i> Running Processes (Top 10)</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>PID</th>
+                                        <th>Name</th>
+                                        <th>CPU %</th>
+                                        <th>Memory %</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="processes-table">
+                                    <tr><td colspan="5">Loading...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Message -->
+    <div id="error-message" style="display: none;">
+        <div class="alert alert-danger">
+            <h5><i class="fas fa-exclamation-triangle"></i> Connection Error</h5>
+            <p>Unable to connect to Glances monitoring service on this server.</p>
+            <p><strong>Glances URL:</strong> {{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}{{ server.glances_path }}</p>
+        </div>
+    </div>
+
+    <!-- Loading Spinner -->
+    <div id="loading-spinner" class="text-center">
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <p class="mt-2">Loading server monitoring data...</p>
+    </div>
+</div>
+
+<script>
+const serverId = {{ server.id }};
+let refreshInterval;
+
+function formatBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function formatUptime(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) {
+        return `${days}d ${hours}h ${minutes}m`;
+    } else if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else {
+        return `${minutes}m`;
+    }
+}
+
+async function loadGlancesData() {
+    try {
+        const response = await fetch(`/api/servers/${serverId}/glances-data`);
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+            displayGlancesData(result.data);
+            document.getElementById('loading-spinner').style.display = 'none';
+            document.getElementById('error-message').style.display = 'none';
+            document.getElementById('monitoring-data').style.display = 'block';
+            document.getElementById('server-status').textContent = 'Online';
+            document.getElementById('server-status').className = 'badge badge-success';
+        } else {
+            showError();
+        }
+    } catch (error) {
+        console.error('Error loading Glances data:', error);
+        showError();
+    }
+}
+
+function displayGlancesData(data) {
+    // CPU Information
+    if (data.cpu) {
+        const cpuTotal = data.cpu.total || 0;
+        document.getElementById('cpu-usage').textContent = `${cpuTotal.toFixed(1)}%`;
+        
+        let cpuDetails = `<strong>Total:</strong> ${cpuTotal.toFixed(1)}%<br>`;
+        if (data.cpu.user !== undefined) cpuDetails += `<strong>User:</strong> ${data.cpu.user.toFixed(1)}%<br>`;
+        if (data.cpu.system !== undefined) cpuDetails += `<strong>System:</strong> ${data.cpu.system.toFixed(1)}%<br>`;
+        if (data.cpu.idle !== undefined) cpuDetails += `<strong>Idle:</strong> ${data.cpu.idle.toFixed(1)}%<br>`;
+        if (data.cpu.iowait !== undefined) cpuDetails += `<strong>IO Wait:</strong> ${data.cpu.iowait.toFixed(1)}%`;
+        document.getElementById('cpu-details').innerHTML = cpuDetails;
+    }
+    
+    // Memory Information
+    if (data.mem) {
+        const memPercent = data.mem.percent || 0;
+        document.getElementById('memory-usage').textContent = `${memPercent.toFixed(1)}%`;
+        
+        let memDetails = `<strong>Used:</strong> ${memPercent.toFixed(1)}% (${formatBytes(data.mem.used || 0)})<br>`;
+        memDetails += `<strong>Total:</strong> ${formatBytes(data.mem.total || 0)}<br>`;
+        memDetails += `<strong>Available:</strong> ${formatBytes(data.mem.available || 0)}<br>`;
+        memDetails += `<strong>Free:</strong> ${formatBytes(data.mem.free || 0)}`;
+        document.getElementById('memory-details').innerHTML = memDetails;
+    }
+    
+    // Disk Information
+    if (data.fs && data.fs.length > 0) {
+        const rootDisk = data.fs.find(disk => disk.mnt_point === '/') || data.fs[0];
+        const diskPercent = rootDisk.percent || 0;
+        document.getElementById('disk-usage').textContent = `${diskPercent.toFixed(1)}%`;
+        
+        let diskDetails = '';
+        data.fs.forEach(disk => {
+            diskDetails += `<strong>${disk.mnt_point}:</strong> ${disk.percent.toFixed(1)}% (${formatBytes(disk.used)} / ${formatBytes(disk.size)})<br>`;
+        });
+        document.getElementById('disk-details').innerHTML = diskDetails;
+    }
+    
+    // Uptime
+    if (data.uptime) {
+        const uptimeFormatted = formatUptime(data.uptime);
+        document.getElementById('uptime').textContent = uptimeFormatted;
+    }
+    
+    // Network Information
+    if (data.network && data.network.length > 0) {
+        let networkDetails = '';
+        data.network.forEach(iface => {
+            if (iface.interface_name !== 'lo') {
+                networkDetails += `<strong>${iface.interface_name}:</strong><br>`;
+                networkDetails += `Rx: ${formatBytes(iface.rx_bytes || 0)} | Tx: ${formatBytes(iface.tx_bytes || 0)}<br>`;
+            }
+        });
+        document.getElementById('network-details').innerHTML = networkDetails || 'No network interfaces found';
+    }
+    
+    // Processes
+    if (data.processlist && data.processlist.length > 0) {
+        let processRows = '';
+        data.processlist.slice(0, 10).forEach(proc => {
+            processRows += `
+                <tr>
+                    <td>${proc.pid}</td>
+                    <td>${proc.name}</td>
+                    <td>${proc.cpu_percent ? proc.cpu_percent.toFixed(1) : '0.0'}%</td>
+                    <td>${proc.memory_percent ? proc.memory_percent.toFixed(1) : '0.0'}%</td>
+                    <td>${proc.status || 'Unknown'}</td>
+                </tr>
+            `;
+        });
+        document.getElementById('processes-table').innerHTML = processRows;
+    }
+}
+
+function showError() {
+    document.getElementById('loading-spinner').style.display = 'none';
+    document.getElementById('monitoring-data').style.display = 'none';
+    document.getElementById('error-message').style.display = 'block';
+    document.getElementById('server-status').textContent = 'Offline';
+    document.getElementById('server-status').className = 'badge badge-danger';
+}
+
+// Refresh button click handler
+document.getElementById('refresh-btn').addEventListener('click', function() {
+    document.getElementById('loading-spinner').style.display = 'block';
+    document.getElementById('monitoring-data').style.display = 'none';
+    document.getElementById('error-message').style.display = 'none';
+    loadGlancesData();
+});
+
+// Auto-refresh every 30 seconds
+function startAutoRefresh() {
+    refreshInterval = setInterval(loadGlancesData, 30000);
+}
+
+function stopAutoRefresh() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+}
+
+// Page visibility API to pause/resume auto-refresh
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        stopAutoRefresh();
+    } else {
+        startAutoRefresh();
+    }
+});
+
+// Initialize
+document.addEventListener('DOMContentLoaded', function() {
+    loadGlancesData();
+    startAutoRefresh();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopAutoRefresh();
+});
+</script>
+{% endblock %}
