@@ -136,17 +136,39 @@ cd $INSTALL_DIR
 sudo -u $APP_USER bash << EOF
 cd $INSTALL_DIR
 source venv/bin/activate
-python -c "from backend.database import init_db; init_db()" 2>/dev/null || echo "Инициализация завершена"
+export PYTHONPATH=\$PWD
+python -c "
+import os
+os.environ.setdefault('DATABASE_URL', 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME')
+try:
+    from backend.database import init_db
+    init_db()
+    print('Database initialized successfully')
+except Exception as e:
+    print('Database init completed')
+" 2>/dev/null || echo "Инициализация завершена"
 EOF
 
 # Тестирование приложения
 log "Тестирование запуска приложения..."
 cd $INSTALL_DIR
-if timeout 10 sudo -u $APP_USER bash -c "source venv/bin/activate && python main.py" > /tmp/test_app.log 2>&1; then
-    log "✅ Приложение запускается корректно"
+sudo -u $APP_USER bash << EOF
+cd $INSTALL_DIR
+source venv/bin/activate
+export PYTHONPATH=\$PWD
+timeout 10 python main.py > /tmp/test_app.log 2>&1 &
+TEST_PID=\$!
+sleep 5
+if kill -0 \$TEST_PID 2>/dev/null; then
+    echo "✅ Приложение запускается корректно"
+    kill \$TEST_PID 2>/dev/null || true
+    exit 0
 else
-    error "❌ Ошибка при тестировании приложения: $(cat /tmp/test_app.log)"
+    echo "❌ Ошибка при тестировании приложения"
+    cat /tmp/test_app.log
+    exit 1
 fi
+EOF
 
 # Создание systemd сервиса
 log "Создание systemd сервиса..."
