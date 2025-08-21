@@ -33,7 +33,7 @@ class ServerCreate(BaseModel):
     glances_scheme: str = "http"
     glances_host: Optional[str] = None
     glances_port: int = 61208
-    glances_path: str = "/api/3/all"
+    glances_path: str = "/api/4/all"
     glances_auth_type: GlancesAuthType = GlancesAuthType.NONE
     glances_username: Optional[str] = None
     glances_password: Optional[str] = None

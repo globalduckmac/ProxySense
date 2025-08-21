@@ -86,7 +86,7 @@ class Server(Base):
     glances_scheme: Mapped[str] = mapped_column(String(10), default="http")
     glances_host: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Defaults to host
     glances_port: Mapped[int] = mapped_column(Integer, default=61208)
-    glances_path: Mapped[str] = mapped_column(String(255), default="/api/3/all")
+    glances_path: Mapped[str] = mapped_column(String(255), default="/api/4/all")
     glances_auth_type: Mapped[GlancesAuthType] = mapped_column(SQLEnum(GlancesAuthType), default=GlancesAuthType.NONE)
     glances_username: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     glances_password: Mapped[Optional[str]] = mapped_column(LargeBinary, nullable=True)  # Encrypted

@@ -53,7 +53,7 @@ class GlancesClient:
                            headers: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]:
         """Get CPU statistics from Glances API."""
         try:
-            cpu_url = url.replace("/api/3/all", "/api/3/cpu")
+            cpu_url = url.replace("/api/4/all", "/api/4/cpu")
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
@@ -76,7 +76,7 @@ class GlancesClient:
                               headers: Optional[Dict[str, str]] = None) -> Optional[Dict[str, Any]]:
         """Get memory statistics from Glances API."""
         try:
-            mem_url = url.replace("/api/3/all", "/api/3/mem")
+            mem_url = url.replace("/api/4/all", "/api/4/mem")
             
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(
