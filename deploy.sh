@@ -32,8 +32,10 @@ info() {
 # Проверка прав root
 check_root() {
     if [[ $EUID -eq 0 ]]; then
-        error "Не запускайте этот скрипт от root! Используйте обычного пользователя с sudo правами."
-        exit 1
+        warn "Запуск от root пользователя. Будет создан отдельный пользователь для приложения."
+        USE_ROOT=true
+    else
+        USE_ROOT=false
     fi
 }
 
@@ -110,53 +112,95 @@ get_settings() {
 # Обновление системы
 update_system() {
     log "Обновление системы..."
-    sudo apt update
-    sudo apt upgrade -y
+    if [[ $USE_ROOT == true ]]; then
+        apt update
+        apt upgrade -y
+    else
+        sudo apt update
+        sudo apt upgrade -y
+    fi
 }
 
 # Установка системных зависимостей
 install_system_deps() {
     log "Установка системных зависимостей..."
-    sudo apt install -y \
-        curl \
-        wget \
-        git \
-        build-essential \
-        software-properties-common \
-        apt-transport-https \
-        ca-certificates \
-        gnupg \
-        lsb-release \
-        nginx \
-        supervisor \
-        htop \
-        vim \
-        ufw
+    if [[ $USE_ROOT == true ]]; then
+        apt install -y \
+            curl \
+            wget \
+            git \
+            build-essential \
+            software-properties-common \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            lsb-release \
+            nginx \
+            supervisor \
+            htop \
+            vim \
+            ufw
+    else
+        sudo apt install -y \
+            curl \
+            wget \
+            git \
+            build-essential \
+            software-properties-common \
+            apt-transport-https \
+            ca-certificates \
+            gnupg \
+            lsb-release \
+            nginx \
+            supervisor \
+            htop \
+            vim \
+            ufw
+    fi
 }
 
 # Установка Python 3.11
 install_python() {
     log "Установка Python 3.11..."
     
-    # Добавление PPA для Python 3.11
-    sudo add-apt-repository ppa:deadsnakes/ppa -y
-    sudo apt update
-    
-    sudo apt install -y \
-        python3.11 \
-        python3.11-dev \
-        python3.11-venv \
-        python3-pip
-    
-    # Создание симлинка
-    sudo ln -sf /usr/bin/python3.11 /usr/bin/python3
+    if [[ $USE_ROOT == true ]]; then
+        # Добавление PPA для Python 3.11
+        add-apt-repository ppa:deadsnakes/ppa -y
+        apt update
+        
+        apt install -y \
+            python3.11 \
+            python3.11-dev \
+            python3.11-venv \
+            python3-pip
+        
+        # Создание симлинка
+        ln -sf /usr/bin/python3.11 /usr/bin/python3
+    else
+        # Добавление PPA для Python 3.11
+        sudo add-apt-repository ppa:deadsnakes/ppa -y
+        sudo apt update
+        
+        sudo apt install -y \
+            python3.11 \
+            python3.11-dev \
+            python3.11-venv \
+            python3-pip
+        
+        # Создание симлинка
+        sudo ln -sf /usr/bin/python3.11 /usr/bin/python3
+    fi
 }
 
 # Установка PostgreSQL
 install_postgresql() {
     if [[ $SETUP_POSTGRES =~ ^[Yy]$ ]]; then
         log "Установка PostgreSQL..."
-        sudo apt install -y postgresql postgresql-contrib
+        if [[ $USE_ROOT == true ]]; then
+            apt install -y postgresql postgresql-contrib
+        else
+            sudo apt install -y postgresql postgresql-contrib
+        fi
         
         log "Настройка базы данных..."
         sudo -u postgres psql << EOF
@@ -175,7 +219,11 @@ EOF
 create_app_user() {
     if ! id "$APP_USER" &>/dev/null; then
         log "Создание пользователя $APP_USER..."
-        sudo useradd -r -s /bin/bash -d $INSTALL_DIR $APP_USER
+        if [[ $USE_ROOT == true ]]; then
+            useradd -r -s /bin/bash -d $INSTALL_DIR $APP_USER
+        else
+            sudo useradd -r -s /bin/bash -d $INSTALL_DIR $APP_USER
+        fi
     else
         info "Пользователь $APP_USER уже существует"
     fi
@@ -187,12 +235,12 @@ clone_repository() {
     
     if [[ -d "$INSTALL_DIR" ]]; then
         warn "Директория $INSTALL_DIR уже существует. Удаляем..."
-        sudo rm -rf $INSTALL_DIR
+        rm -rf $INSTALL_DIR
     fi
     
-    sudo mkdir -p $INSTALL_DIR
-    sudo git clone $REPO_URL $INSTALL_DIR
-    sudo chown -R $APP_USER:$APP_USER $INSTALL_DIR
+    mkdir -p $INSTALL_DIR
+    git clone $REPO_URL $INSTALL_DIR
+    chown -R $APP_USER:$APP_USER $INSTALL_DIR
 }
 
 # Установка Python зависимостей
@@ -239,7 +287,11 @@ EOF
 create_env_file() {
     log "Создание файла окружения..."
     
-    sudo -u $APP_USER tee $INSTALL_DIR/.env > /dev/null << EOF
+    if [[ $USE_ROOT == true ]]; then
+        su $APP_USER -c "cat > $INSTALL_DIR/.env" << EOF
+    else
+        sudo -u $APP_USER tee $INSTALL_DIR/.env > /dev/null << EOF
+    fi
 # Database Configuration
 DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
 
@@ -263,7 +315,7 @@ PORT=$APP_PORT
 # SMTP_PASSWORD=your_app_password
 EOF
 
-    sudo chmod 600 $INSTALL_DIR/.env
+    chmod 600 $INSTALL_DIR/.env
 }
 
 # Инициализация базы данных
@@ -271,11 +323,15 @@ init_database() {
     if [[ $SETUP_POSTGRES =~ ^[Yy]$ ]]; then
         log "Инициализация базы данных..."
         
-        sudo -u $APP_USER bash << EOF
+        if [[ $USE_ROOT == true ]]; then
+            su -c "cd $INSTALL_DIR && source venv/bin/activate && python manage.py init-db 2>/dev/null || echo 'База данных уже инициализирована или файл manage.py не найден'" $APP_USER
+        else
+            sudo -u $APP_USER bash << EOF
 cd $INSTALL_DIR
 source venv/bin/activate
 python manage.py init-db 2>/dev/null || echo "База данных уже инициализирована или файл manage.py не найден"
 EOF
+        fi
     fi
 }
 
@@ -283,7 +339,7 @@ EOF
 create_systemd_service() {
     log "Создание systemd сервиса..."
     
-    sudo tee /etc/systemd/system/reverse-proxy-monitor.service > /dev/null << EOF
+    tee /etc/systemd/system/reverse-proxy-monitor.service > /dev/null << EOF
 [Unit]
 Description=Reverse Proxy Monitor
 After=network.target postgresql.service
@@ -313,8 +369,8 @@ ReadWritePaths=$INSTALL_DIR
 WantedBy=multi-user.target
 EOF
 
-    sudo systemctl daemon-reload
-    sudo systemctl enable reverse-proxy-monitor
+    systemctl daemon-reload
+    systemctl enable reverse-proxy-monitor
 }
 
 # Настройка Nginx
@@ -322,7 +378,7 @@ configure_nginx() {
     log "Настройка Nginx..."
     
     if [[ -n "$DOMAIN" ]]; then
-        sudo tee /etc/nginx/sites-available/reverse-proxy-monitor > /dev/null << EOF
+        tee /etc/nginx/sites-available/reverse-proxy-monitor > /dev/null << EOF
 server {
     listen 80;
     server_name $DOMAIN;
@@ -347,47 +403,47 @@ server {
 }
 EOF
         
-        sudo ln -sf /etc/nginx/sites-available/reverse-proxy-monitor /etc/nginx/sites-enabled/
-        sudo rm -f /etc/nginx/sites-enabled/default
+        ln -sf /etc/nginx/sites-available/reverse-proxy-monitor /etc/nginx/sites-enabled/
+        rm -f /etc/nginx/sites-enabled/default
         
         log "Nginx настроен для домена: $DOMAIN"
-        info "Для SSL сертификата используйте: sudo certbot --nginx -d $DOMAIN"
+        info "Для SSL сертификата используйте: certbot --nginx -d $DOMAIN"
     else
         warn "Домен не указан. Настройте Nginx вручную или используйте IP:$APP_PORT"
     fi
     
-    sudo nginx -t
-    sudo systemctl restart nginx
+    nginx -t
+    systemctl restart nginx
 }
 
 # Настройка файрвола
 configure_firewall() {
     log "Настройка файрвола..."
     
-    sudo ufw --force enable
-    sudo ufw default deny incoming
-    sudo ufw default allow outgoing
+    ufw --force enable
+    ufw default deny incoming
+    ufw default allow outgoing
     
     # SSH
-    sudo ufw allow ssh
+    ufw allow ssh
     
     # HTTP/HTTPS
-    sudo ufw allow 80
-    sudo ufw allow 443
+    ufw allow 80
+    ufw allow 443
     
     # Порт приложения (если нет домена)
     if [[ -z "$DOMAIN" ]]; then
-        sudo ufw allow $APP_PORT
+        ufw allow $APP_PORT
     fi
     
-    sudo ufw --force reload
+    ufw --force reload
 }
 
 # Установка логротации
 setup_log_rotation() {
     log "Настройка ротации логов..."
     
-    sudo tee /etc/logrotate.d/reverse-proxy-monitor > /dev/null << EOF
+    tee /etc/logrotate.d/reverse-proxy-monitor > /dev/null << EOF
 $INSTALL_DIR/logs/*.log {
     daily
     missingok
@@ -403,24 +459,24 @@ $INSTALL_DIR/logs/*.log {
 EOF
 
     # Создание директории логов
-    sudo mkdir -p $INSTALL_DIR/logs
-    sudo chown $APP_USER:$APP_USER $INSTALL_DIR/logs
+    mkdir -p $INSTALL_DIR/logs
+    chown $APP_USER:$APP_USER $INSTALL_DIR/logs
 }
 
 # Запуск сервисов
 start_services() {
     log "Запуск сервисов..."
     
-    sudo systemctl start reverse-proxy-monitor
-    sudo systemctl restart nginx
+    systemctl start reverse-proxy-monitor
+    systemctl restart nginx
     
     sleep 5
     
-    if sudo systemctl is-active --quiet reverse-proxy-monitor; then
+    if systemctl is-active --quiet reverse-proxy-monitor; then
         log "✅ Сервис reverse-proxy-monitor запущен успешно"
     else
         error "❌ Ошибка запуска сервиса reverse-proxy-monitor"
-        sudo journalctl -u reverse-proxy-monitor --no-pager -n 20
+        journalctl -u reverse-proxy-monitor --no-pager -n 20
     fi
 }
 
@@ -428,7 +484,7 @@ start_services() {
 create_update_script() {
     log "Создание скрипта обновления..."
     
-    sudo tee $INSTALL_DIR/update.sh > /dev/null << 'EOF'
+    tee $INSTALL_DIR/update.sh > /dev/null << 'EOF'
 #!/bin/bash
 # Скрипт обновления приложения
 
@@ -465,8 +521,8 @@ sudo systemctl restart reverse-proxy-monitor
 log "✅ Обновление завершено успешно!"
 EOF
 
-    sudo chmod +x $INSTALL_DIR/update.sh
-    sudo chown $APP_USER:$APP_USER $INSTALL_DIR/update.sh
+    chmod +x $INSTALL_DIR/update.sh
+    chown $APP_USER:$APP_USER $INSTALL_DIR/update.sh
 }
 
 # Финальная информация
@@ -482,10 +538,10 @@ show_final_info() {
     [[ $SETUP_POSTGRES =~ ^[Yy]$ ]] && info "База данных: $DB_NAME (пользователь: $DB_USER)"
     echo
     info "=== ПОЛЕЗНЫЕ КОМАНДЫ ==="
-    info "Статус сервиса:     sudo systemctl status reverse-proxy-monitor"
-    info "Логи сервиса:       sudo journalctl -u reverse-proxy-monitor -f"
-    info "Перезапуск:         sudo systemctl restart reverse-proxy-monitor"
-    info "Обновление:         sudo -u $APP_USER $INSTALL_DIR/update.sh"
+    info "Статус сервиса:     systemctl status reverse-proxy-monitor"
+    info "Логи сервиса:       journalctl -u reverse-proxy-monitor -f"
+    info "Перезапуск:         systemctl restart reverse-proxy-monitor"
+    info "Обновление:         su -c '$INSTALL_DIR/update.sh' $APP_USER"
     info "Конфигурация:       $INSTALL_DIR/.env"
     echo
     info "=== ПЕРВЫЙ ВХОД ==="
@@ -495,7 +551,7 @@ show_final_info() {
     echo
     warn "Не забудьте:"
     warn "1. Настроить Telegram бота (если нужно)"
-    warn "2. Настроить SSL сертификат: sudo apt install certbot python3-certbot-nginx && sudo certbot --nginx -d $DOMAIN"
+    warn "2. Настроить SSL сертификат: apt install certbot python3-certbot-nginx && certbot --nginx -d $DOMAIN"
     warn "3. Изменить пароль администратора"
     echo
 }
