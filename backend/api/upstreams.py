@@ -57,12 +57,20 @@ class UpstreamResponse(BaseModel):
 
 @router.get("/", response_model=List[UpstreamResponse])
 async def list_upstreams(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """List all upstreams."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     upstreams = db.query(Upstream).offset(skip).limit(limit).all()
     
     # Convert to proper response format
@@ -151,11 +159,19 @@ async def create_upstream(
 
 @router.get("/{upstream_id}", response_model=UpstreamResponse)
 async def get_upstream(
+    request: Request,
     upstream_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Get a specific upstream."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     upstream = db.query(Upstream).filter(Upstream.id == upstream_id).first()
     if not upstream:
         raise HTTPException(
@@ -167,12 +183,20 @@ async def get_upstream(
 
 @router.put("/{upstream_id}", response_model=UpstreamResponse)
 async def update_upstream(
+    request: Request,
     upstream_id: int,
     upstream_data: UpstreamUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Update an upstream."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     upstream = db.query(Upstream).filter(Upstream.id == upstream_id).first()
     if not upstream:
         raise HTTPException(
@@ -224,11 +248,19 @@ async def update_upstream(
 
 @router.delete("/{upstream_id}")
 async def delete_upstream(
+    request: Request,
     upstream_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Delete an upstream."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     upstream = db.query(Upstream).filter(Upstream.id == upstream_id).first()
     if not upstream:
         raise HTTPException(
