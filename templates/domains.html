@@ -566,18 +566,33 @@ function loadDomainData(domainId) {
 
 // Auto-update NS check times
 function updateNSCheckTimes() {
+    console.log('Updating NS check times...');
     fetch('/api/domains/ns-status', {
         method: 'GET',
-        credentials: 'include'
+        credentials: 'include',
+        headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+        }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('NS status response:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('NS status data:', data);
         if (data.domains) {
             data.domains.forEach(domain => {
                 const nsCheckElement = document.getElementById(`last-ns-check-${domain.id}`);
+                console.log(`Updating domain ${domain.id}, element:`, nsCheckElement, 'time:', domain.last_ns_check_at);
                 if (nsCheckElement && domain.last_ns_check_at) {
                     const lastCheck = new Date(domain.last_ns_check_at);
-                    nsCheckElement.textContent = lastCheck.toLocaleTimeString();
+                    const timeString = lastCheck.toLocaleTimeString();
+                    nsCheckElement.textContent = timeString;
+                    console.log(`Updated domain ${domain.id} to ${timeString}`);
                 }
             });
         }
@@ -587,7 +602,10 @@ function updateNSCheckTimes() {
     });
 }
 
-// Start auto-update every 30 seconds for NS checks
-setInterval(updateNSCheckTimes, 30000);
+// Auto-refresh page every 2 minutes to update NS check times
+setInterval(() => {
+    console.log('Auto-refreshing domains page for NS updates');
+    location.reload();
+}, 120000); // 2 minutes
 </script>
 {% endblock %}
