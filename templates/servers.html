@@ -85,10 +85,10 @@
                         <span class="label">Glances:</span>
                         <span class="value">{{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}</span>
                     </div>
-                    {% if server.last_check %}
+                    {% if server.last_check_at %}
                     <div class="info-item">
                         <span class="label">Last Check:</span>
-                        <span class="value">{{ server.last_check.strftime('%H:%M:%S') }}</span>
+                        <span class="value" id="last-check-{{ server.id }}">{{ server.last_check_at.strftime('%H:%M:%S') }}</span>
                     </div>
                     {% endif %}
                     {% if server.failure_count > 0 %}

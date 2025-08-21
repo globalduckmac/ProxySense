@@ -96,6 +96,7 @@ class Server(Base):
     status: Mapped[ServerStatus] = mapped_column(SQLEnum(ServerStatus), default=ServerStatus.PROVISIONING)
     failure_count: Mapped[int] = mapped_column(Integer, default=0)
     last_check: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_check_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
     

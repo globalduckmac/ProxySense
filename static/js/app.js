@@ -35,6 +35,11 @@ function initializeApp() {
     // Initialize real-time features
     initializeRealTimeUpdates();
     
+    // Initialize server status monitoring for servers page
+    if (window.location.pathname === '/servers') {
+        initializeServerStatusUpdates();
+    }
+    
     // Auto-close alerts after 5 seconds
     autoCloseAlerts();
     
@@ -1133,3 +1138,39 @@ window.formatDuration = formatDuration;
 window.formatDate = formatDate;
 window.formatPercentage = formatPercentage;
 window.createMiniChart = createMiniChart;
+
+// Server status update functions
+function initializeServerStatusUpdates() {
+    // Update server statuses every 10 seconds
+    setInterval(async () => {
+        try {
+            const data = await apiRequest('/api/servers/status');
+            if (data && data.servers) {
+                updateServerStatuses(data.servers);
+            }
+        } catch (error) {
+            console.error('Failed to update server statuses:', error);
+        }
+    }, 10000);
+}
+
+function updateServerStatuses(servers) {
+    servers.forEach(server => {
+        // Update status badge
+        const serverCard = document.querySelector(`[data-server-id="${server.id}"]`);
+        if (serverCard) {
+            const statusBadge = serverCard.querySelector('.status-badge');
+            if (statusBadge) {
+                statusBadge.className = `status-badge status-${server.status}`;
+                statusBadge.textContent = server.status.charAt(0).toUpperCase() + server.status.slice(1);
+            }
+        }
+        
+        // Update last check time
+        const lastCheckElement = document.getElementById(`last-check-${server.id}`);
+        if (lastCheckElement && server.last_check_at) {
+            const checkTime = new Date(server.last_check_at);
+            lastCheckElement.textContent = checkTime.toLocaleTimeString();
+        }
+    });
+}

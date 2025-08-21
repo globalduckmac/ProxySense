@@ -108,10 +108,10 @@ class SchedulerService:
             
             if server.glances_auth_type.value == "basic" and server.glances_username:
                 username = server.glances_username
-                password = decrypt_if_needed(server.glances_password) if server.glances_password else ""
+                password = server.glances_password or ""
                 auth = (username, password)
             elif server.glances_auth_type.value == "token" and server.glances_token:
-                token = decrypt_if_needed(server.glances_token)
+                token = server.glances_token or ""
                 headers["Authorization"] = f"Bearer {token}"
             
             # Make request to Glances API
@@ -143,6 +143,7 @@ class SchedulerService:
                 # Update server status
                 server.status = ServerStatus.OK
                 server.last_check = datetime.utcnow()
+                server.last_check_at = datetime.utcnow()
                 server.failure_count = 0
                 
                 # Reset failure count
@@ -161,6 +162,7 @@ class SchedulerService:
             
             server.failure_count = failure_count
             server.last_check = datetime.utcnow()
+            server.last_check_at = datetime.utcnow()
             
             # Check if server should be marked as unreachable
             if failure_count >= settings.GLANCES_MAX_FAILURES:

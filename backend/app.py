@@ -30,8 +30,14 @@ async def lifespan(app: FastAPI):
     # Create database tables
     Base.metadata.create_all(bind=engine)
     
+    # Start server monitoring service
+    from backend.server_monitor import monitor_service
+    await monitor_service.start()
+    
     yield
     
+    # Stop monitoring service
+    await monitor_service.stop()
     logger.info("Shutting down Reverse Proxy & Monitor application...")
 
 

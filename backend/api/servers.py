@@ -113,6 +113,35 @@ async def list_servers(
     return servers
 
 
+@router.get("/status")
+async def get_servers_status(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get quick status of all servers."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
+    servers = db.query(Server).all()
+    status_data = []
+    
+    for server in servers:
+        status_data.append({
+            "id": server.id,
+            "name": server.name,
+            "status": server.status.value,
+            "last_check_at": server.last_check_at.isoformat() if server.last_check_at else None,
+            "failure_count": server.failure_count
+        })
+    
+    return {"servers": status_data}
+
+
 @router.post("/", response_model=ServerResponse)
 async def create_server(
     request: Request,
