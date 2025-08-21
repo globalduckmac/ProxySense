@@ -296,9 +296,32 @@ fix_auth_settings() {
     
     # Исправляем backend/ui/routes.py для web login
     if [[ -f "backend/ui/routes.py" ]]; then
-        sed -i 's/secure=not settings\.DEBUG/secure=False/g' backend/ui/routes.py
-        # Добавляем samesite="lax" если его нет
-        sed -i '/httponly=True,$/a\        samesite="lax"  # Исправлено для работы с Nginx reverse proxy' backend/ui/routes.py
+        # Заменяем весь блок set_cookie чтобы избежать синтаксических ошибок
+        python3 << 'PYTHON_EOF'
+import re
+
+with open('backend/ui/routes.py', 'r') as f:
+    content = f.read()
+
+# Ищем и заменяем весь блок set_cookie
+pattern = r'response\.set_cookie\(\s*key="access_token",\s*value=access_token,\s*max_age=settings\.ACCESS_TOKEN_EXPIRE_MINUTES \* 60,\s*httponly=True,\s*secure=not settings\.DEBUG\s*\)'
+
+replacement = '''response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+        secure=False,
+        samesite="lax"
+    )'''
+
+content = re.sub(pattern, replacement, content, flags=re.MULTILINE | re.DOTALL)
+
+with open('backend/ui/routes.py', 'w') as f:
+    f.write(content)
+
+print("Cookie настройки в UI routes исправлены")
+PYTHON_EOF
         log "Cookie настройки в UI routes исправлены для reverse proxy"
     fi
 }

@@ -22,6 +22,8 @@ Preferred communication style: Simple, everyday language.
 - **FIXED**: Cookie Security for Reverse Proxy - authentication cookies now use `secure=False` and `samesite='lax'` for compatibility with Nginx reverse proxy
 - **FIXED**: Database Connection Pool Exhaustion - increased pool from 5 to 20 connections and overflow from 10 to 30 to handle multiple SSE connections
 - **FIXED**: Route Import Problems - ensured all necessary router imports are present in main.py
+- **FIXED**: Cookie Settings Syntax Error - deployment scripts now use Python regex to properly replace cookie settings in UI routes, preventing syntax errors from malformed sed operations
+- **FIXED**: User Model Field Issue - corrected all scripts to use `role='admin'` instead of `is_admin=True` to match actual User model structure
 
 ### Updated Deployment Scripts:
 - **deploy_fixed.sh**: Comprehensive deployment with all fixes integrated
