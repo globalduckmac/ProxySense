@@ -50,10 +50,10 @@ def verify_token(token: str) -> Optional[str]:
     """Verify a JWT token and return the username."""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        username: str = payload.get("sub")
+        username = payload.get("sub")
         if username is None:
             return None
-        return username
+        return str(username)
     except JWTError:
         return None
 
