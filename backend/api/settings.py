@@ -402,7 +402,7 @@ async def test_telegram_connection(
             )
     
     except Exception as e:
-        logger.error(f"Error testing Telegram connection: {e}")
+        logger.error(f"Error testing Telegram connection: {e}", exc_info=True)
         return TelegramTestResponse(
             success=False,
             message=f"Test failed: {str(e)}"

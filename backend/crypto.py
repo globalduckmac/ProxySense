@@ -75,4 +75,17 @@ def decrypt_if_needed(value: Optional[bytes]) -> Optional[str]:
     """Decrypt a value if it exists."""
     if value is None:
         return None
-    return decrypt_string(value)
+    
+    # If it's already a string (not encrypted), return as is
+    if isinstance(value, str):
+        return value
+    
+    try:
+        # Try to decrypt
+        return decrypt_string(value)
+    except Exception:
+        # If decryption fails, assume it's plain text
+        try:
+            return value.decode('utf-8')
+        except Exception:
+            return str(value)
