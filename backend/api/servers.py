@@ -292,11 +292,22 @@ async def delete_server(
         )
     
     server_name = server.name
+    
+    # Delete related records first to avoid foreign key constraint violations
+    from backend.models import Task, Alert
+    
+    # Delete related tasks
+    db.query(Task).filter(Task.server_id == server_id).delete()
+    
+    # Delete related alerts
+    db.query(Alert).filter(Alert.server_id == server_id).delete()
+    
+    # Now delete the server
     db.delete(server)
     db.commit()
     
-    logger.info(f"Server {server_name} deleted by user {current_user.username}")
-    return {"message": "Server deleted successfully"}
+    logger.info(f"Server {server_name} and related records deleted by user {current_user.username}")
+    return {"message": "Server and related records deleted successfully"}
 
 
 @router.post("/{server_id}/check-ssh", response_model=TaskResponse)
