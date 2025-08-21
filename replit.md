@@ -8,6 +8,14 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Glances API Version Global Fix
+- **Date**: August 21, 2025
+- **Change**: Fixed Glances API version inconsistency across entire system
+- **Issue**: System was trying to connect using outdated `/api/3/all` instead of `/api/4/all`
+- **Resolution**: Updated database records and verified all code uses correct `/api/4/all` endpoint
+- **Impact**: Resolved "404 Not Found" errors in server monitoring, now properly detects actual connection issues
+- **Result**: Server monitoring now correctly identifies when servers are unreachable vs API version errors
+
 ## Nginx Auto-Installation for Domain Deployment Fix
 - **Date**: August 21, 2025
 - **Change**: Fixed domain deployment failures by adding automatic Nginx installation and configuration
