@@ -314,21 +314,8 @@ async def login_post(
     db: Session = Depends(get_db)
 ):
     """Handle login form submission."""
-    logger.info(f"Login attempt for username: '{username}'")
-    
-    # Check if user exists
-    user_exists = db.query(User).filter(User.username == username).first()
-    logger.info(f"User exists: {user_exists is not None}")
-    
-    if user_exists:
-        logger.info(f"User active: {user_exists.is_active}")
-        from backend.auth import verify_password
-        password_valid = verify_password(password, user_exists.hashed_password)
-        logger.info(f"Password valid: {password_valid}")
-    
     user = authenticate_user(db, username, password)
     if not user:
-        logger.warning(f"Authentication failed for username: '{username}'")
         return templates.TemplateResponse("auth/login.html", {
             "request": request,
             "error": "Invalid username or password"
