@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}Servers - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Servers{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-primary" onclick="openServerModal()">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    </svg>
+    Add Server
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="servers-page">
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <select id="status-filter" class="form-select" onchange="filterServers()">
+                <option value="">All Statuses</option>
+                <option value="ok">Online</option>
+                <option value="unreachable">Unreachable</option>
+                <option value="provisioning">Provisioning</option>
+            </select>
+        </div>
+        <div class="search-box">
+            <input type="text" id="server-search" placeholder="Search servers..." oninput="filterServers()">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Servers Grid -->
+    <div class="servers-grid">
+        {% for server in servers %}
+        <div class="server-card" data-status="{{ server.status.value }}" data-name="{{ server.name|lower }}">
+            <div class="server-header">
+                <div class="server-status status-{{ server.status.value }}">
+                    {% if server.status.value == 'ok' %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                    {% elif server.status.value == 'unreachable' %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    {% else %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                        </svg>
+                    {% endif %}
+                </div>
+                <div class="server-actions">
+                    <button class="btn-icon" onclick="editServer({{ server.id }})" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" onclick="deleteServer({{ server.id }})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="server-content">
+                <h3 class="server-name">{{ server.name }}</h3>
+                <div class="server-info">
+                    <div class="info-item">
+                        <span class="label">Host:</span>
+                        <span class="value">{{ server.host }}:{{ server.ssh_port }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">User:</span>
+                        <span class="value">{{ server.username }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Auth:</span>
+                        <span class="value">{{ server.auth_type.value }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="label">Glances:</span>
+                        <span class="value">{{ server.glances_scheme }}://{{ server.glances_host or server.host }}:{{ server.glances_port }}</span>
+                    </div>
+                    {% if server.last_check %}
+                    <div class="info-item">
+                        <span class="label">Last Check:</span>
+                        <span class="value">{{ server.last_check.strftime('%H:%M:%S') }}</span>
+                    </div>
+                    {% endif %}
+                    {% if server.failure_count > 0 %}
+                    <div class="info-item">
+                        <span class="label">Failures:</span>
+                        <span class="value error">{{ server.failure_count }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="server-actions-bar">
+                <button class="btn btn-sm btn-outline" onclick="checkSSH({{ server.id }})">Check SSH</button>
+                <button class="btn btn-sm btn-outline" onclick="deployProxy({{ server.id }})">Deploy Proxy</button>
+                <button class="btn btn-sm btn-outline" onclick="installGlances({{ server.id }})">Install Glances</button>
+                <button class="btn btn-sm btn-primary" onclick="probeGlances({{ server.id }})">Test Glances</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not servers %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+        </svg>
+        <h3>No Servers Configured</h3>
+        <p>Add your first server to start monitoring and managing your infrastructure.</p>
+        <button class="btn btn-primary" onclick="openServerModal()">Add Server</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Server Modal -->
+<div id="server-modal" class="modal">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="server-modal-title">Add Server</h2>
+            <button class="modal-close" onclick="closeServerModal()">&times;</button>
+        </div>
+        <form id="server-form" onsubmit="submitServer(event)">
+            <div class="modal-body">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="server-name">Server Name</label>
+                        <input type="text" id="server-name" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="server-host">Host/IP Address</label>
+                        <input type="text" id="server-host" name="host" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="server-ssh-port">SSH Port</label>
+                        <input type="number" id="server-ssh-port" name="ssh_port" value="22" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="server-username">Username</label>
+                        <input type="text" id="server-username" name="username" required>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Authentication</h3>
+                    <div class="form-group">
+                        <label for="auth-type">Authentication Type</label>
+                        <select id="auth-type" name="auth_type" onchange="toggleAuthFields()" required>
+                            <option value="password">Password</option>
+                            <option value="ssh_key">SSH Key</option>
+                        </select>
+                    </div>
+                    <div id="password-fields">
+                        <div class="form-group">
+                            <label for="server-password">Password</label>
+                            <input type="password" id="server-password" name="password">
+                        </div>
+                    </div>
+                    <div id="ssh-key-fields" style="display: none;">
+                        <div class="form-group">
+                            <label for="server-ssh-key">SSH Private Key</label>
+                            <textarea id="server-ssh-key" name="ssh_key" rows="6"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="server-ssh-passphrase">Key Passphrase (optional)</label>
+                            <input type="password" id="server-ssh-passphrase" name="ssh_key_passphrase">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h3>Glances Configuration</h3>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="glances-scheme">Scheme</label>
+                            <select id="glances-scheme" name="glances_scheme">
+                                <option value="http">HTTP</option>
+                                <option value="https">HTTPS</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="glances-host">Host (optional)</label>
+                            <input type="text" id="glances-host" name="glances_host" placeholder="Defaults to server host">
+                        </div>
+                        <div class="form-group">
+                            <label for="glances-port">Port</label>
+                            <input type="number" id="glances-port" name="glances_port" value="61208" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="glances-path">API Path</label>
+                            <input type="text" id="glances-path" name="glances_path" value="/api/3/all" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="glances-auth-type">Glances Auth Type</label>
+                        <select id="glances-auth-type" name="glances_auth_type" onchange="toggleGlancesAuth()">
+                            <option value="none">None</option>
+                            <option value="basic">Basic Auth</option>
+                            <option value="token">Token</option>
+                        </select>
+                    </div>
+                    <div id="glances-basic-auth" style="display: none;">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="glances-username">Username</label>
+                                <input type="text" id="glances-username" name="glances_username">
+                            </div>
+                            <div class="form-group">
+                                <label for="glances-password">Password</label>
+                                <input type="password" id="glances-password" name="glances_password">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="glances-token-auth" style="display: none;">
+                        <div class="form-group">
+                            <label for="glances-token">Token</label>
+                            <input type="text" id="glances-token" name="glances_token">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeServerModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Server</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingServerId = null;
+
+function openServerModal(serverId = null) {
+    editingServerId = serverId;
+    const modal = document.getElementById('server-modal');
+    const form = document.getElementById('server-form');
+    const title = document.getElementById('server-modal-title');
+    
+    if (serverId) {
+        title.textContent = 'Edit Server';
+        // Load server data for editing
+        loadServerData(serverId);
+    } else {
+        title.textContent = 'Add Server';
+        form.reset();
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeServerModal() {
+    document.getElementById('server-modal').style.display = 'none';
+    editingServerId = null;
+}
+
+function toggleAuthFields() {
+    const authType = document.getElementById('auth-type').value;
+    const passwordFields = document.getElementById('password-fields');
+    const sshKeyFields = document.getElementById('ssh-key-fields');
+    
+    if (authType === 'password') {
+        passwordFields.style.display = 'block';
+        sshKeyFields.style.display = 'none';
+    } else {
+        passwordFields.style.display = 'none';
+        sshKeyFields.style.display = 'block';
+    }
+}
+
+function toggleGlancesAuth() {
+    const authType = document.getElementById('glances-auth-type').value;
+    const basicAuth = document.getElementById('glances-basic-auth');
+    const tokenAuth = document.getElementById('glances-token-auth');
+    
+    basicAuth.style.display = authType === 'basic' ? 'block' : 'none';
+    tokenAuth.style.display = authType === 'token' ? 'block' : 'none';
+}
+
+function submitServer(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const serverData = Object.fromEntries(formData.entries());
+    
+    // Convert empty strings to null for optional fields
+    Object.keys(serverData).forEach(key => {
+        if (serverData[key] === '') {
+            serverData[key] = null;
+        }
+    });
+    
+    const url = editingServerId ? `/api/servers/${editingServerId}` : '/api/servers/';
+    const method = editingServerId ? 'PUT' : 'POST';
+    
+    showLoading();
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(serverData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification('Server saved successfully', 'success');
+            closeServerModal();
+            location.reload();
+        } else {
+            showNotification(data.detail || 'Failed to save server', 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save server', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function filterServers() {
+    const statusFilter = document.getElementById('status-filter').value;
+    const searchTerm = document.getElementById('server-search').value.toLowerCase();
+    const serverCards = document.querySelectorAll('.server-card');
+    
+    serverCards.forEach(card => {
+        const status = card.dataset.status;
+        const name = card.dataset.name;
+        
+        const statusMatch = !statusFilter || status === statusFilter;
+        const nameMatch = !searchTerm || name.includes(searchTerm);
+        
+        card.style.display = statusMatch && nameMatch ? 'block' : 'none';
+    });
+}
+
+function checkSSH(serverId) {
+    performServerAction(serverId, 'check-ssh', 'SSH Check');
+}
+
+function deployProxy(serverId) {
+    performServerAction(serverId, 'deploy-proxy', 'Deploy Proxy');
+}
+
+function installGlances(serverId) {
+    performServerAction(serverId, 'install-glances', 'Install Glances');
+}
+
+function performServerAction(serverId, action, actionName) {
+    showLoading();
+    
+    fetch(`/api/servers/${serverId}/${action}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification(`${actionName} task started`, 'success');
+            openTaskProgressModal(data.id, data.name);
+        } else {
+            showNotification(data.detail || `Failed to start ${actionName}`, 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification(`Failed to start ${actionName}`, 'error');
+        console.error('Error:', error);
+    });
+}
+
+function probeGlances(serverId) {
+    showLoading();
+    
+    fetch(`/api/servers/${serverId}/probe-glances`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            showNotification('Glances connection successful', 'success');
+        } else {
+            showNotification(`Glances test failed: ${data.message}`, 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to test Glances connection', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function deleteServer(serverId) {
+    if (!confirm('Are you sure you want to delete this server? This action cannot be undone.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    fetch(`/api/servers/${serverId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Server deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete server', 'error');
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}

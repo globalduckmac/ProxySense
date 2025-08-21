@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Settings{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-outline" onclick="initializeDefaults()">Initialize Defaults</button>
+<button class="btn btn-outline" onclick="exportSettings()">Export Settings</button>
+{% endblock %}
+
+{% block content %}
+<div class="settings-page">
+    <div class="settings-nav">
+        <div class="nav-item active" data-section="telegram" onclick="showSection('telegram')">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M9.78 18.65l.28-4.23 7.68-6.92c.34-.31-.07-.46-.52-.19L7.74 13.3 3.64 12c-.88-.25-.89-.86.2-1.3l15.97-6.16c.73-.33 1.43.18 1.15 1.3l-2.72 12.81c-.19.91-.74 1.13-1.5.71L12.6 16.3l-1.99 1.93c-.23.23-.42.42-.83.42z"/>
+            </svg>
+            Telegram
+        </div>
+        <div class="nav-item" data-section="glances" onclick="showSection('glances')">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+            </svg>
+            Glances
+        </div>
+        <div class="nav-item" data-section="dns" onclick="showSection('dns')">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+            </svg>
+            DNS
+        </div>
+        <div class="nav-item" data-section="ssh" onclick="showSection('ssh')">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+            </svg>
+            SSH
+        </div>
+        <div class="nav-item" data-section="alerts" onclick="showSection('alerts')">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+            </svg>
+            Alerts
+        </div>
+        <div class="nav-item" data-section="system" onclick="showSection('system')">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+            </svg>
+            System
+        </div>
+    </div>
+
+    <div class="settings-content">
+        <!-- Telegram Settings -->
+        <div id="telegram-section" class="settings-section active">
+            <div class="section-header">
+                <h2>Telegram Notifications</h2>
+                <p>Configure Telegram bot for system alerts and notifications</p>
+            </div>
+            
+            <div class="settings-form">
+                <form id="telegram-form" onsubmit="saveTelegramSettings(event)">
+                    <div class="form-group">
+                        <label for="telegram-bot-token">Bot Token</label>
+                        <input type="password" id="telegram-bot-token" name="bot_token" 
+                               value="{% for category, settings in categorized_settings.items() %}{% if category == 'telegram' %}{% for setting_data in settings %}{% if setting_data.setting.key == 'telegram.bot_token' %}{{ setting_data.display_value }}{% endif %}{% endfor %}{% endif %}{% endfor %}"
+                               placeholder="Enter Telegram Bot Token">
+                        <small class="form-help">Get this from @BotFather on Telegram</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="telegram-chat-id">Chat ID</label>
+                        <input type="text" id="telegram-chat-id" name="chat_id"
+                               value="{% for category, settings in categorized_settings.items() %}{% if category == 'telegram' %}{% for setting_data in settings %}{% if setting_data.setting.key == 'telegram.chat_id' %}{{ setting_data.display_value }}{% endif %}{% endfor %}{% endif %}{% endfor %}"
+                               placeholder="Enter Chat ID or Channel Username">
+                        <small class="form-help">Chat ID where notifications will be sent</small>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="testTelegram()">Test Connection</button>
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Glances Settings -->
+        <div id="glances-section" class="settings-section">
+            <div class="section-header">
+                <h2>Glances Monitoring</h2>
+                <p>Configure Glances API polling and monitoring behavior</p>
+            </div>
+            
+            <div class="settings-form">
+                {% for setting_data in categorized_settings.glances %}
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label class="setting-label">{{ setting_data.setting.key.replace('glances.', '').replace('_', ' ').title() }}</label>
+                        <p class="setting-description">{{ setting_data.setting.description or 'No description available' }}</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="text" 
+                               value="{{ setting_data.display_value }}" 
+                               onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                               class="form-input">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- DNS Settings -->
+        <div id="dns-section" class="settings-section">
+            <div class="section-header">
+                <h2>DNS Configuration</h2>
+                <p>Configure DNS checking and nameserver validation</p>
+            </div>
+            
+            <div class="settings-form">
+                {% for setting_data in categorized_settings.dns %}
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label class="setting-label">{{ setting_data.setting.key.replace('dns.', '').replace('_', ' ').title() }}</label>
+                        <p class="setting-description">{{ setting_data.setting.description or 'No description available' }}</p>
+                    </div>
+                    <div class="setting-control">
+                        {% if 'servers' in setting_data.setting.key %}
+                        <textarea onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                                  class="form-textarea" rows="2">{{ setting_data.display_value }}</textarea>
+                        {% else %}
+                        <input type="text" 
+                               value="{{ setting_data.display_value }}" 
+                               onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                               class="form-input">
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- SSH Settings -->
+        <div id="ssh-section" class="settings-section">
+            <div class="section-header">
+                <h2>SSH Configuration</h2>
+                <p>Configure SSH connection timeouts and behavior</p>
+            </div>
+            
+            <div class="settings-form">
+                {% for setting_data in categorized_settings.ssh %}
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label class="setting-label">{{ setting_data.setting.key.replace('ssh.', '').replace('_', ' ').title() }}</label>
+                        <p class="setting-description">{{ setting_data.setting.description or 'No description available' }}</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" 
+                               value="{{ setting_data.display_value }}" 
+                               onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                               class="form-input" min="1" max="300">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Alerts Settings -->
+        <div id="alerts-section" class="settings-section">
+            <div class="section-header">
+                <h2>Alert Management</h2>
+                <p>Configure alert retention and cleanup policies</p>
+            </div>
+            
+            <div class="settings-form">
+                {% for setting_data in categorized_settings.alerts %}
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label class="setting-label">{{ setting_data.setting.key.replace('alerts.', '').replace('_', ' ').title() }}</label>
+                        <p class="setting-description">{{ setting_data.setting.description or 'No description available' }}</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" 
+                               value="{{ setting_data.display_value }}" 
+                               onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                               class="form-input" min="1" max="365">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- System Settings -->
+        <div id="system-section" class="settings-section">
+            <div class="section-header">
+                <h2>System Settings</h2>
+                <p>Configure task cleanup and metrics retention</p>
+            </div>
+            
+            <div class="settings-form">
+                {% for setting_data in categorized_settings.tasks %}
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label class="setting-label">{{ setting_data.setting.key.replace('tasks.', '').replace('_', ' ').title() }}</label>
+                        <p class="setting-description">{{ setting_data.setting.description or 'No description available' }}</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" 
+                               value="{{ setting_data.display_value }}" 
+                               onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                               class="form-input" min="1" max="365">
+                    </div>
+                </div>
+                {% endfor %}
+                
+                {% for setting_data in categorized_settings.metrics %}
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <label class="setting-label">{{ setting_data.setting.key.replace('metrics.', '').replace('_', ' ').title() }}</label>
+                        <p class="setting-description">{{ setting_data.setting.description or 'No description available' }}</p>
+                    </div>
+                    <div class="setting-control">
+                        <input type="number" 
+                               value="{{ setting_data.display_value }}" 
+                               onchange="updateSetting('{{ setting_data.setting.id }}', this.value)"
+                               class="form-input" min="1" max="365">
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            
+            <div class="system-actions">
+                <h3>System Actions</h3>
+                <div class="action-buttons">
+                    <button class="btn btn-outline" onclick="cleanupOldData()">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                        Cleanup Old Data
+                    </button>
+                    <button class="btn btn-outline" onclick="generateEncryptionKey()">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
+                        </svg>
+                        Generate New Encryption Key
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Setting Modal -->
+<div id="custom-setting-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Add Custom Setting</h2>
+            <button class="modal-close" onclick="closeCustomSettingModal()">&times;</button>
+        </div>
+        <form id="custom-setting-form" onsubmit="saveCustomSetting(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="setting-key">Setting Key</label>
+                    <input type="text" id="setting-key" name="key" required placeholder="category.setting_name">
+                </div>
+                
+                <div class="form-group">
+                    <label for="setting-value">Value</label>
+                    <input type="text" id="setting-value" name="value" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="setting-description">Description</label>
+                    <textarea id="setting-description" name="description" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="setting-encrypted" name="is_encrypted">
+                        <span class="checkmark"></span>
+                        Encrypt this value
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCustomSettingModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Setting</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function showSection(sectionName) {
+    // Hide all sections
+    document.querySelectorAll('.settings-section').forEach(section => {
+        section.classList.remove('active');
+    });
+    
+    // Remove active from nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    
+    // Show selected section
+    document.getElementById(sectionName + '-section').classList.add('active');
+    document.querySelector(`[data-section="${sectionName}"]`).classList.add('active');
+}
+
+function saveTelegramSettings(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const telegramData = Object.fromEntries(formData.entries());
+    
+    // Remove empty values
+    Object.keys(telegramData).forEach(key => {
+        if (!telegramData[key]) {
+            delete telegramData[key];
+        }
+    });
+    
+    showLoading();
+    
+    fetch('/api/settings/telegram/update', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(telegramData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Telegram settings saved successfully', 'success');
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save Telegram settings', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function testTelegram() {
+    showLoading();
+    
+    fetch('/api/settings/telegram/test', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            showNotification('Telegram test successful!', 'success');
+        } else {
+            showNotification(`Telegram test failed: ${data.message}`, 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to test Telegram connection', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function updateSetting(settingId, value) {
+    const updateData = {
+        value: value
+    };
+    
+    fetch(`/api/settings/${settingId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(updateData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        showNotification('Setting updated successfully', 'success');
+    })
+    .catch(error => {
+        showNotification('Failed to update setting', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function initializeDefaults() {
+    if (!confirm('This will initialize default settings. Existing settings will not be overwritten. Continue?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    fetch('/api/settings/initialize-defaults', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification(data.message, 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to initialize defaults', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function exportSettings() {
+    const includeEncrypted = confirm('Include encrypted settings in export? (Not recommended for sharing)');
+    
+    showLoading();
+    
+    fetch(`/api/settings/export/all?include_encrypted=${includeEncrypted}`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        // Create downloadable file
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `settings_export_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('Settings exported successfully', 'success');
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to export settings', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function cleanupOldData() {
+    if (!confirm('This will permanently delete old metrics, logs, and completed tasks. Continue?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    Promise.all([
+        fetch('/api/alerts/cleanup', { method: 'POST', headers: { 'Authorization': `Bearer ${getAuthToken()}` } }),
+        fetch('/api/tasks/cleanup', { method: 'POST', headers: { 'Authorization': `Bearer ${getAuthToken()}` } })
+    ])
+    .then(responses => Promise.all(responses.map(r => r.json())))
+    .then(results => {
+        hideLoading();
+        const totalDeleted = results.reduce((sum, result) => sum + (result.deleted_count || 0), 0);
+        showNotification(`Cleanup completed. ${totalDeleted} items deleted.`, 'success');
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Cleanup failed', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function generateEncryptionKey() {
+    if (!confirm('This will generate a new encryption key. Existing encrypted data will become unreadable. Continue?')) {
+        return;
+    }
+    
+    showLoading();
+    
+    // This would call a backend endpoint to generate a new key
+    // For now, just show a warning
+    hideLoading();
+    showNotification('This feature requires backend implementation', 'warning');
+}
+
+function openCustomSettingModal() {
+    document.getElementById('custom-setting-modal').style.display = 'flex';
+}
+
+function closeCustomSettingModal() {
+    document.getElementById('custom-setting-modal').style.display = 'none';
+}
+
+function saveCustomSetting(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const settingData = Object.fromEntries(formData.entries());
+    settingData.is_encrypted = !!formData.get('is_encrypted');
+    
+    showLoading();
+    
+    fetch('/api/settings/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(settingData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Custom setting saved successfully', 'success');
+        closeCustomSettingModal();
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save custom setting', 'error');
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}

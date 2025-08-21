@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Upstreams - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Upstreams{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-primary" onclick="openUpstreamModal()">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    </svg>
+    Add Upstream
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="upstreams-page">
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="search-box">
+            <input type="text" id="upstream-search" placeholder="Search upstreams..." oninput="filterUpstreams()">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Upstreams List -->
+    <div class="upstreams-list">
+        {% for upstream in upstreams %}
+        <div class="upstream-card" data-name="{{ upstream.name|lower }}">
+            <div class="upstream-header">
+                <h3 class="upstream-name">{{ upstream.name }}</h3>
+                <div class="upstream-actions">
+                    <button class="btn-icon" onclick="editUpstream({{ upstream.id }})" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" onclick="deleteUpstream({{ upstream.id }})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="upstream-content">
+                <div class="targets-list">
+                    <h4>Targets ({{ upstream.targets|length }})</h4>
+                    {% if upstream.targets %}
+                        {% for target in upstream.targets %}
+                        <div class="target-item">
+                            <div class="target-info">
+                                <span class="target-host">{{ target.host }}:{{ target.port }}</span>
+                                {% if target.weight > 1 %}
+                                <span class="target-weight">weight: {{ target.weight }}</span>
+                                {% endif %}
+                            </div>
+                            <div class="target-status">
+                                <svg class="status-icon" viewBox="0 0 24 24" fill="currentColor">
+                                    <circle cx="12" cy="12" r="8"/>
+                                </svg>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-targets">
+                            <p>No targets configured</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <div class="upstream-meta">
+                    <div class="meta-item">
+                        <span class="label">Created:</span>
+                        <span class="value">{{ upstream.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <div class="meta-item">
+                        <span class="label">Updated:</span>
+                        <span class="value">{{ upstream.updated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not upstreams %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+        <h3>No Upstreams Configured</h3>
+        <p>Create upstream pools to group backend servers for load balancing.</p>
+        <button class="btn btn-primary" onclick="openUpstreamModal()">Add Upstream</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Upstream Modal -->
+<div id="upstream-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="upstream-modal-title">Add Upstream</h2>
+            <button class="modal-close" onclick="closeUpstreamModal()">&times;</button>
+        </div>
+        <form id="upstream-form" onsubmit="submitUpstream(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="upstream-name">Upstream Name</label>
+                    <input type="text" id="upstream-name" name="name" required>
+                </div>
+                
+                <div class="targets-section">
+                    <div class="section-header">
+                        <h3>Targets</h3>
+                        <button type="button" class="btn btn-sm btn-outline" onclick="addTarget()">Add Target</button>
+                    </div>
+                    <div id="targets-container">
+                        <!-- Target inputs will be added here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeUpstreamModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Upstream</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingUpstreamId = null;
+let targetCounter = 0;
+
+function openUpstreamModal(upstreamId = null) {
+    editingUpstreamId = upstreamId;
+    const modal = document.getElementById('upstream-modal');
+    const form = document.getElementById('upstream-form');
+    const title = document.getElementById('upstream-modal-title');
+    const targetsContainer = document.getElementById('targets-container');
+    
+    // Clear existing targets
+    targetsContainer.innerHTML = '';
+    targetCounter = 0;
+    
+    if (upstreamId) {
+        title.textContent = 'Edit Upstream';
+        loadUpstreamData(upstreamId);
+    } else {
+        title.textContent = 'Add Upstream';
+        form.reset();
+        addTarget(); // Add one empty target by default
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeUpstreamModal() {
+    document.getElementById('upstream-modal').style.display = 'none';
+    editingUpstreamId = null;
+}
+
+function addTarget(host = '', port = '', weight = 1) {
+    const targetsContainer = document.getElementById('targets-container');
+    const targetId = targetCounter++;
+    
+    const targetHtml = `
+        <div class="target-input" id="target-${targetId}">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Host</label>
+                    <input type="text" name="targets[${targetId}][host]" value="${host}" required>
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" name="targets[${targetId}][port]" value="${port}" min="1" max="65535" required>
+                </div>
+                <div class="form-group">
+                    <label>Weight</label>
+                    <input type="number" name="targets[${targetId}][weight]" value="${weight}" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeTarget(${targetId})">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    targetsContainer.insertAdjacentHTML('beforeend', targetHtml);
+}
+
+function removeTarget(targetId) {
+    const targetElement = document.getElementById(`target-${targetId}`);
+    if (targetElement) {
+        targetElement.remove();
+    }
+    
+    // Ensure at least one target remains
+    const remainingTargets = document.querySelectorAll('.target-input');
+    if (remainingTargets.length === 0) {
+        addTarget();
+    }
+}
+
+function submitUpstream(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const upstreamData = {
+        name: formData.get('name'),
+        targets: []
+    };
+    
+    // Extract targets data
+    const targetInputs = document.querySelectorAll('.target-input');
+    targetInputs.forEach((targetInput, index) => {
+        const hostInput = targetInput.querySelector('input[name*="[host]"]');
+        const portInput = targetInput.querySelector('input[name*="[port]"]');
+        const weightInput = targetInput.querySelector('input[name*="[weight]"]');
+        
+        if (hostInput.value && portInput.value) {
+            upstreamData.targets.push({
+                host: hostInput.value,
+                port: parseInt(portInput.value),
+                weight: parseInt(weightInput.value) || 1
+            });
+        }
+    });
+    
+    if (upstreamData.targets.length === 0) {
+        showNotification('At least one target is required', 'error');
+        return;
+    }
+    
+    const url = editingUpstreamId ? `/api/upstreams/${editingUpstreamId}` : '/api/upstreams/';
+    const method = editingUpstreamId ? 'PUT' : 'POST';
+    
+    showLoading();
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(upstreamData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification('Upstream saved successfully', 'success');
+            closeUpstreamModal();
+            location.reload();
+        } else {
+            showNotification(data.detail || 'Failed to save upstream', 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save upstream', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function loadUpstreamData(upstreamId) {
+    showLoading();
+    
+    fetch(`/api/upstreams/${upstreamId}`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        // Fill form with upstream data
+        document.getElementById('upstream-name').value = data.name;
+        
+        // Add target inputs with data
+        const targetsContainer = document.getElementById('targets-container');
+        targetsContainer.innerHTML = '';
+        targetCounter = 0;
+        
+        data.targets.forEach(target => {
+            addTarget(target.host, target.port, target.weight);
+        });
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to load upstream data', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function filterUpstreams() {
+    const searchTerm = document.getElementById('upstream-search').value.toLowerCase();
+    const upstreamCards = document.querySelectorAll('.upstream-card');
+    
+    upstreamCards.forEach(card => {
+        const name = card.dataset.name;
+        const match = !searchTerm || name.includes(searchTerm);
+        card.style.display = match ? 'block' : 'none';
+    });
+}
+
+function editUpstream(upstreamId) {
+    openUpstreamModal(upstreamId);
+}
+
+function deleteUpstream(upstreamId) {
+    if (!confirm('Are you sure you want to delete this upstream? This action cannot be undone.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    fetch(`/api/upstreams/${upstreamId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Upstream deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete upstream', 'error');
+        console.error('Error:', error);
+    });
+}
+
+// Initialize with one target when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Page is ready
+});
+</script>
+{% endblock %}

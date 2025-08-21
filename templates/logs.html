@@ -1,0 +1,455 @@
+{% extends "base.html" %}
+
+{% block title %}Logs & Tasks - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Logs & Tasks{% endblock %}
+
+{% block page_actions %}
+<div class="filter-actions">
+    <button class="btn btn-outline" onclick="refreshTasks()">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 8 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+        </svg>
+        Refresh
+    </button>
+    <button class="btn btn-outline" onclick="cleanupTasks()">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+        </svg>
+        Cleanup Old
+    </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="logs-page">
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <select id="task-type-filter" class="form-select" onchange="filterTasks()">
+                <option value="">All Task Types</option>
+                {% for task_type in task_types %}
+                <option value="{{ task_type }}" {% if selected_task_type == task_type %}selected{% endif %}>
+                    {{ task_type.replace('_', ' ').title() }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="status-filter" class="form-select" onchange="filterTasks()">
+                <option value="">All Statuses</option>
+                {% for status in task_statuses %}
+                <option value="{{ status }}" {% if selected_status == status %}selected{% endif %}>
+                    {{ status.title() }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="search-box">
+            <input type="text" id="task-search" placeholder="Search tasks..." oninput="filterTasks()">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Tasks List -->
+    <div class="tasks-list">
+        {% for task in tasks %}
+        <div class="task-card" 
+             data-type="{{ task.task_type }}" 
+             data-status="{{ task.status.value }}" 
+             data-name="{{ task.name|lower }}">
+            <div class="task-header">
+                <div class="task-status-icon status-{{ task.status.value }}">
+                    {% if task.status.value == 'completed' %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                    {% elif task.status.value == 'failed' %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                        </svg>
+                    {% elif task.status.value == 'running' %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-13h-2v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                        </svg>
+                    {% else %}
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                        </svg>
+                    {% endif %}
+                </div>
+                
+                <div class="task-info">
+                    <h3 class="task-name">{{ task.name }}</h3>
+                    <div class="task-meta">
+                        <span class="task-type-badge task-type-{{ task.task_type }}">{{ task.task_type.replace('_', ' ').title() }}</span>
+                        <span class="task-time">{{ task.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+                    </div>
+                    {% if task.description %}
+                    <p class="task-description">{{ task.description }}</p>
+                    {% endif %}
+                </div>
+                
+                <div class="task-actions">
+                    <button class="btn-icon" onclick="viewTaskDetails({{ task.id }})" title="View Details">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
+                    </button>
+                    {% if task.status.value == 'running' %}
+                    <button class="btn-icon" onclick="watchTaskProgress({{ task.id }})" title="Watch Progress">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M1 21h4V9H1v12zm22-11c0-1.1-.9-2-2-2h-6.31l.95-4.57.03-.32c0-.41-.17-.79-.44-1.06L14.17 1 7.59 7.59C7.22 7.95 7 8.45 7 9v10c0 1.1.9 2 2 2h9c.83 0 1.54-.5 1.84-1.22l3.02-7.05c.09-.23.14-.47.14-.73v-1.91l-.01-.01L23 10z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                    <button class="btn-icon" onclick="downloadTaskLogs({{ task.id }})" title="Download Logs">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                        </svg>
+                    </button>
+                    {% if task.status.value in ['completed', 'failed'] %}
+                    <button class="btn-icon" onclick="deleteTask({{ task.id }})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="task-content">
+                {% if task.status.value == 'running' %}
+                <div class="progress-section">
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ task.progress }}%"></div>
+                    </div>
+                    <span class="progress-text">{{ task.progress }}%</span>
+                </div>
+                {% endif %}
+                
+                {% if task.error_message %}
+                <div class="task-error">
+                    <strong>Error:</strong> {{ task.error_message }}
+                </div>
+                {% endif %}
+                
+                <div class="task-timestamps">
+                    <div class="timestamp-item">
+                        <span class="label">Created:</span>
+                        <span class="value">{{ task.created_at.strftime('%H:%M:%S') }}</span>
+                    </div>
+                    {% if task.started_at %}
+                    <div class="timestamp-item">
+                        <span class="label">Started:</span>
+                        <span class="value">{{ task.started_at.strftime('%H:%M:%S') }}</span>
+                    </div>
+                    {% endif %}
+                    {% if task.completed_at %}
+                    <div class="timestamp-item">
+                        <span class="label">Completed:</span>
+                        <span class="value">{{ task.completed_at.strftime('%H:%M:%S') }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not tasks %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+        </svg>
+        <h3>No Tasks Found</h3>
+        <p>Tasks will appear here when you perform operations on servers and domains.</p>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Task Details Modal -->
+<div id="task-details-modal" class="modal">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="task-details-title">Task Details</h2>
+            <button class="modal-close" onclick="closeTaskDetailsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="task-details-content">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeTaskDetailsModal()">Close</button>
+            <button class="btn btn-primary" onclick="downloadCurrentTaskLogs()">Download Logs</button>
+        </div>
+    </div>
+</div>
+
+<!-- Cleanup Modal -->
+<div id="cleanup-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Cleanup Old Tasks</h2>
+            <button class="modal-close" onclick="closeCleanupModal()">&times;</button>
+        </div>
+        <form id="cleanup-form" onsubmit="performCleanup(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="cleanup-days">Delete tasks older than (days):</label>
+                    <input type="number" id="cleanup-days" name="days" min="1" max="365" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label for="cleanup-status">Status filter:</label>
+                    <select id="cleanup-status" name="status">
+                        <option value="completed">Completed only</option>
+                        <option value="">All statuses</option>
+                    </select>
+                </div>
+                <div class="warning-message">
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                    </svg>
+                    <p>This action cannot be undone. Task logs will be permanently deleted.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCleanupModal()">Cancel</button>
+                <button type="submit" class="btn btn-danger">Delete Tasks</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentTaskId = null;
+
+function filterTasks() {
+    const typeFilter = document.getElementById('task-type-filter').value;
+    const statusFilter = document.getElementById('status-filter').value;
+    const searchTerm = document.getElementById('task-search').value.toLowerCase();
+    const taskCards = document.querySelectorAll('.task-card');
+    
+    taskCards.forEach(card => {
+        const type = card.dataset.type;
+        const status = card.dataset.status;
+        const name = card.dataset.name;
+        
+        const typeMatch = !typeFilter || type === typeFilter;
+        const statusMatch = !statusFilter || status === statusFilter;
+        const nameMatch = !searchTerm || name.includes(searchTerm);
+        
+        card.style.display = typeMatch && statusMatch && nameMatch ? 'block' : 'none';
+    });
+}
+
+function refreshTasks() {
+    location.reload();
+}
+
+function viewTaskDetails(taskId) {
+    currentTaskId = taskId;
+    const modal = document.getElementById('task-details-modal');
+    const title = document.getElementById('task-details-title');
+    const content = document.getElementById('task-details-content');
+    
+    title.textContent = 'Task Details';
+    content.innerHTML = '<div class="loading">Loading task details...</div>';
+    
+    modal.style.display = 'flex';
+    
+    showLoading();
+    
+    fetch(`/api/tasks/${taskId}`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        displayTaskDetails(data);
+    })
+    .catch(error => {
+        hideLoading();
+        content.innerHTML = '<div class="error">Failed to load task details</div>';
+        console.error('Error:', error);
+    });
+}
+
+function displayTaskDetails(data) {
+    const content = document.getElementById('task-details-content');
+    const task = data.task;
+    const logs = data.logs;
+    
+    let html = '<div class="task-details">';
+    
+    // Task info
+    html += '<div class="task-info-section">';
+    html += `<h3>${task.name}</h3>`;
+    html += `<div class="task-meta">`;
+    html += `<span class="task-type-badge task-type-${task.task_type}">${task.task_type.replace('_', ' ')}</span>`;
+    html += `<span class="task-status status-${task.status}">${task.status}</span>`;
+    html += `</div>`;
+    if (task.description) {
+        html += `<p class="task-description">${task.description}</p>`;
+    }
+    
+    // Progress
+    if (task.status === 'running') {
+        html += '<div class="progress-section">';
+        html += '<div class="progress-bar">';
+        html += `<div class="progress-fill" style="width: ${task.progress}%"></div>`;
+        html += '</div>';
+        html += `<span class="progress-text">${task.progress}%</span>`;
+        html += '</div>';
+    }
+    
+    // Error message
+    if (task.error_message) {
+        html += `<div class="error-message">${task.error_message}</div>`;
+    }
+    
+    // Timestamps
+    html += '<div class="timestamps">';
+    html += `<div class="timestamp-item"><strong>Created:</strong> ${task.created_at}</div>`;
+    if (task.started_at) {
+        html += `<div class="timestamp-item"><strong>Started:</strong> ${task.started_at}</div>`;
+    }
+    if (task.completed_at) {
+        html += `<div class="timestamp-item"><strong>Completed:</strong> ${task.completed_at}</div>`;
+    }
+    html += '</div>';
+    html += '</div>';
+    
+    // Logs section
+    html += '<div class="logs-section">';
+    html += '<h4>Logs</h4>';
+    if (logs && logs.length > 0) {
+        html += '<div class="logs-container">';
+        logs.forEach(log => {
+            html += `<div class="log-entry log-${log.level.toLowerCase()}">`;
+            html += `<div class="log-timestamp">${log.timestamp}</div>`;
+            html += `<div class="log-level">${log.level}</div>`;
+            html += `<div class="log-source">${log.source}</div>`;
+            html += `<div class="log-message">${log.message}</div>`;
+            if (log.stdout) {
+                html += `<div class="log-stdout"><pre>${log.stdout}</pre></div>`;
+            }
+            if (log.stderr) {
+                html += `<div class="log-stderr"><pre>${log.stderr}</pre></div>`;
+            }
+            if (log.return_code !== null) {
+                html += `<div class="log-return-code">Exit code: ${log.return_code}</div>`;
+            }
+            html += '</div>';
+        });
+        html += '</div>';
+    } else {
+        html += '<div class="no-logs">No logs available</div>';
+    }
+    html += '</div>';
+    
+    html += '</div>';
+    
+    content.innerHTML = html;
+}
+
+function closeTaskDetailsModal() {
+    document.getElementById('task-details-modal').style.display = 'none';
+    currentTaskId = null;
+}
+
+function watchTaskProgress(taskId) {
+    openTaskProgressModal(taskId, 'Task Progress');
+}
+
+function downloadTaskLogs(taskId) {
+    window.open(`/api/tasks/${taskId}/download`, '_blank');
+}
+
+function downloadCurrentTaskLogs() {
+    if (currentTaskId) {
+        downloadTaskLogs(currentTaskId);
+    }
+}
+
+function deleteTask(taskId) {
+    if (!confirm('Are you sure you want to delete this task? This action cannot be undone.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    fetch(`/api/tasks/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Task deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete task', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function cleanupTasks() {
+    document.getElementById('cleanup-modal').style.display = 'flex';
+}
+
+function closeCleanupModal() {
+    document.getElementById('cleanup-modal').style.display = 'none';
+}
+
+function performCleanup(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const days = formData.get('days');
+    const status = formData.get('status');
+    
+    showLoading();
+    
+    const params = new URLSearchParams({ days });
+    if (status) params.append('status', status);
+    
+    fetch(`/api/tasks/cleanup?${params}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification(data.message, 'success');
+        closeCleanupModal();
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to cleanup tasks', 'error');
+        console.error('Error:', error);
+    });
+}
+
+// Auto-refresh running tasks
+setInterval(() => {
+    const runningTasks = document.querySelectorAll('.task-card[data-status="running"]');
+    if (runningTasks.length > 0) {
+        location.reload();
+    }
+}, 10000); // Refresh every 10 seconds if there are running tasks
+</script>
+{% endblock %}

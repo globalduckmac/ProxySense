@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Statistics Cards -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon servers">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ stats.online_servers }}/{{ stats.total_servers }}</div>
+                <div class="stat-label">Servers Online</div>
+            </div>
+            <div class="stat-status {% if stats.online_servers == stats.total_servers %}success{% elif stats.online_servers > 0 %}warning{% else %}error{% endif %}">
+                {% if stats.online_servers == stats.total_servers %}
+                    All Operational
+                {% elif stats.online_servers > 0 %}
+                    Some Issues
+                {% else %}
+                    All Down
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon domains">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ stats.ssl_domains }}/{{ stats.total_domains }}</div>
+                <div class="stat-label">SSL Domains</div>
+            </div>
+            <div class="stat-progress">
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {% if stats.total_domains > 0 %}{{ (stats.ssl_domains / stats.total_domains * 100)|round }}{% else %}0{% endif %}%"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon alerts">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ stats.unresolved_alerts }}</div>
+                <div class="stat-label">Active Alerts</div>
+            </div>
+            <div class="stat-status {% if stats.unresolved_alerts == 0 %}success{% elif stats.unresolved_alerts < 5 %}warning{% else %}error{% endif %}">
+                {% if stats.unresolved_alerts == 0 %}
+                    No Issues
+                {% elif stats.unresolved_alerts < 5 %}
+                    Minor Issues
+                {% else %}
+                    Needs Attention
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon monitoring">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-number">{{ stats.total_domains }}</div>
+                <div class="stat-label">Total Domains</div>
+            </div>
+            <div class="stat-meta">
+                <small>{{ stats.total_servers }} servers configured</small>
+            </div>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <!-- Recent Tasks -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <h3>Recent Tasks</h3>
+                <a href="/logs" class="panel-action">View All</a>
+            </div>
+            <div class="panel-content">
+                {% if recent_tasks %}
+                    <div class="task-list">
+                        {% for task in recent_tasks %}
+                        <div class="task-item">
+                            <div class="task-icon">
+                                {% if task.status.value == 'completed' %}
+                                    <svg class="success" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                    </svg>
+                                {% elif task.status.value == 'failed' %}
+                                    <svg class="error" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                    </svg>
+                                {% elif task.status.value == 'running' %}
+                                    <svg class="warning" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm1-13h-2v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                                    </svg>
+                                {% else %}
+                                    <svg class="muted" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                                    </svg>
+                                {% endif %}
+                            </div>
+                            <div class="task-content">
+                                <div class="task-name">{{ task.name }}</div>
+                                <div class="task-meta">
+                                    <span class="task-type">{{ task.task_type }}</span>
+                                    <span class="task-time">{{ task.created_at.strftime('%H:%M') }}</span>
+                                </div>
+                            </div>
+                            <div class="task-status status-{{ task.status.value }}">
+                                {{ task.status.value.title() }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/>
+                        </svg>
+                        <p>No recent tasks</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Active Alerts -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <h3>Active Alerts</h3>
+                <a href="/alerts" class="panel-action">View All</a>
+            </div>
+            <div class="panel-content">
+                {% if recent_alerts %}
+                    <div class="alert-list">
+                        {% for alert in recent_alerts %}
+                        <div class="alert-item alert-{{ alert.level.value }}">
+                            <div class="alert-icon">
+                                {% if alert.level.value == 'critical' %}
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                                    </svg>
+                                {% elif alert.level.value == 'error' %}
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+                                    </svg>
+                                {% elif alert.level.value == 'warning' %}
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                                    </svg>
+                                {% else %}
+                                    <svg viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                                    </svg>
+                                {% endif %}
+                            </div>
+                            <div class="alert-content">
+                                <div class="alert-title">{{ alert.title }}</div>
+                                <div class="alert-message">{{ alert.message[:100] }}{% if alert.message|length > 100 %}...{% endif %}</div>
+                                <div class="alert-time">{{ alert.created_at.strftime('%H:%M') }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-state success">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                        </svg>
+                        <p>No active alerts</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- System Overview -->
+        <div class="dashboard-panel">
+            <div class="panel-header">
+                <h3>System Overview</h3>
+                <button class="panel-action" onclick="refreshStats()">Refresh</button>
+            </div>
+            <div class="panel-content">
+                <div class="overview-grid">
+                    <div class="overview-item">
+                        <div class="overview-label">Total Servers</div>
+                        <div class="overview-value">{{ stats.total_servers }}</div>
+                    </div>
+                    <div class="overview-item">
+                        <div class="overview-label">Online Servers</div>
+                        <div class="overview-value success">{{ stats.online_servers }}</div>
+                    </div>
+                    <div class="overview-item">
+                        <div class="overview-label">Total Domains</div>
+                        <div class="overview-value">{{ stats.total_domains }}</div>
+                    </div>
+                    <div class="overview-item">
+                        <div class="overview-label">SSL Enabled</div>
+                        <div class="overview-value success">{{ stats.ssl_domains }}</div>
+                    </div>
+                </div>
+                
+                <div class="quick-actions">
+                    <h4>Quick Actions</h4>
+                    <div class="action-buttons">
+                        <a href="/servers" class="btn btn-primary btn-sm">Add Server</a>
+                        <a href="/domains" class="btn btn-primary btn-sm">Add Domain</a>
+                        <a href="/logs" class="btn btn-secondary btn-sm">View Logs</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh dashboard stats
+function refreshStats() {
+    showLoading();
+    
+    fetch('/api/ui/dashboard/stats')
+        .then(response => response.json())
+        .then(data => {
+            // Update stat cards with new data
+            updateDashboardStats(data);
+            hideLoading();
+        })
+        .catch(error => {
+            console.error('Error refreshing stats:', error);
+            hideLoading();
+            showNotification('Failed to refresh statistics', 'error');
+        });
+}
+
+function updateDashboardStats(data) {
+    // This would update the DOM with new statistics
+    // Implementation would update the stat cards dynamically
+}
+
+// Auto-refresh every 30 seconds
+setInterval(refreshStats, 30000);
+
+// Real-time updates via SSE for dashboard
+const dashboardSSE = new EventSource('/api/ui/dashboard/stream');
+dashboardSSE.onmessage = function(event) {
+    const data = JSON.parse(event.data);
+    if (data.type === 'stats_update') {
+        updateDashboardStats(data.stats);
+    }
+};
+</script>
+{% endblock %}

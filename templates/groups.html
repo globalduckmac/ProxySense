@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+
+{% block title %}Domain Groups - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Domain Groups{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-primary" onclick="openGroupModal()">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    </svg>
+    Add Group
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="groups-page">
+    <!-- Search Bar -->
+    <div class="search-bar">
+        <div class="search-box">
+            <input type="text" id="group-search" placeholder="Search groups..." oninput="filterGroups()">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+        </div>
+        <div class="bulk-actions">
+            <button class="btn btn-outline" onclick="selectAllGroups()">Select All</button>
+            <button class="btn btn-outline" onclick="bulkMoveGroups()" disabled id="bulk-move-btn">Move Domains</button>
+            <button class="btn btn-danger" onclick="bulkDeleteGroups()" disabled id="bulk-delete-btn">Delete Selected</button>
+        </div>
+    </div>
+
+    <!-- Groups Grid -->
+    <div class="groups-grid">
+        {% for group_data in groups_data %}
+        <div class="group-card" data-name="{{ group_data.group.name|lower }}">
+            <div class="group-header">
+                <div class="group-checkbox">
+                    <label class="checkbox-label">
+                        <input type="checkbox" class="group-select" value="{{ group_data.group.id }}" onchange="updateBulkActions()">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+                <div class="group-actions">
+                    <button class="btn-icon" onclick="editGroup({{ group_data.group.id }})" title="Edit">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" onclick="deleteGroup({{ group_data.group.id }})" title="Delete">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="group-content">
+                <h3 class="group-name">{{ group_data.group.name }}</h3>
+                
+                {% if group_data.group.description %}
+                <p class="group-description">{{ group_data.group.description }}</p>
+                {% endif %}
+                
+                <div class="group-stats">
+                    <div class="stat-item">
+                        <div class="stat-icon domains">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ group_data.domain_count }}</div>
+                            <div class="stat-label">Domains</div>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-item">
+                        <div class="stat-icon ssl">
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
+                            </svg>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-number">{{ group_data.ssl_count }}</div>
+                            <div class="stat-label">SSL Enabled</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="group-progress">
+                    <div class="progress-label">SSL Coverage</div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {% if group_data.domain_count > 0 %}{{ (group_data.ssl_count / group_data.domain_count * 100)|round }}{% else %}0{% endif %}%"></div>
+                    </div>
+                    <div class="progress-text">
+                        {% if group_data.domain_count > 0 %}
+                            {{ (group_data.ssl_count / group_data.domain_count * 100)|round }}%
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="group-meta">
+                    <div class="meta-item">
+                        <span class="label">Created:</span>
+                        <span class="value">{{ group_data.group.created_at.strftime('%Y-%m-%d') }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="group-actions-bar">
+                <a href="/domains?group_id={{ group_data.group.id }}" class="btn btn-sm btn-outline">View Domains</a>
+                <button class="btn btn-sm btn-primary" onclick="manageDomains({{ group_data.group.id }})">Manage</button>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not groups_data %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M16 4c0-1.11.89-2 2-2s2 .89 2 2-.89 2-2 2-2-.89-2-2zm4 18v-6h2.5l-2.54-7.63A2.99 2.99 0 0 0 17.1 6.5h-1.6c-.97 0-1.84.57-2.24 1.45L11.8 12H10v-2c0-.55-.45-1-1-1s-1 .45-1 1v2H6.5c-.28 0-.5.22-.5.5s.22.5.5.5H8v8.5c0 .28.22.5.5.5s.5-.22.5-.5V14h2v7.5c0 .28.22.5.5.5s.5-.22.5-.5V14h1.2l1.46 8.03c.06.33.35.57.69.57.03 0 .06 0 .09-.01.36-.06.6-.39.54-.75L14.5 14H16v8z"/>
+        </svg>
+        <h3>No Domain Groups</h3>
+        <p>Create groups to organize your domains by project, environment, or any other criteria.</p>
+        <button class="btn btn-primary" onclick="openGroupModal()">Create First Group</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Group Modal -->
+<div id="group-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="group-modal-title">Add Group</h2>
+            <button class="modal-close" onclick="closeGroupModal()">&times;</button>
+        </div>
+        <form id="group-form" onsubmit="submitGroup(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="group-name">Group Name</label>
+                    <input type="text" id="group-name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="group-description">Description (optional)</label>
+                    <textarea id="group-description" name="description" rows="3" placeholder="Describe the purpose of this group"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeGroupModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Group</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Manage Domains Modal -->
+<div id="manage-domains-modal" class="modal">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2 id="manage-domains-title">Manage Domains</h2>
+            <button class="modal-close" onclick="closeManageDomainsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="manage-domains-content">
+                <!-- Content will be loaded dynamically -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeManageDomainsModal()">Close</button>
+            <button type="button" class="btn btn-primary" onclick="moveSelectedDomains()">Move Selected</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingGroupId = null;
+let managingGroupId = null;
+
+function openGroupModal(groupId = null) {
+    editingGroupId = groupId;
+    const modal = document.getElementById('group-modal');
+    const form = document.getElementById('group-form');
+    const title = document.getElementById('group-modal-title');
+    
+    if (groupId) {
+        title.textContent = 'Edit Group';
+        loadGroupData(groupId);
+    } else {
+        title.textContent = 'Add Group';
+        form.reset();
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeGroupModal() {
+    document.getElementById('group-modal').style.display = 'none';
+    editingGroupId = null;
+}
+
+function closeManageDomainsModal() {
+    document.getElementById('manage-domains-modal').style.display = 'none';
+    managingGroupId = null;
+}
+
+function submitGroup(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const groupData = Object.fromEntries(formData.entries());
+    
+    // Convert empty strings to null for optional fields
+    Object.keys(groupData).forEach(key => {
+        if (groupData[key] === '') {
+            groupData[key] = null;
+        }
+    });
+    
+    const url = editingGroupId ? `/api/groups/${editingGroupId}` : '/api/groups/';
+    const method = editingGroupId ? 'PUT' : 'POST';
+    
+    showLoading();
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(groupData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification('Group saved successfully', 'success');
+            closeGroupModal();
+            location.reload();
+        } else {
+            showNotification(data.detail || 'Failed to save group', 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save group', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function filterGroups() {
+    const searchTerm = document.getElementById('group-search').value.toLowerCase();
+    const groupCards = document.querySelectorAll('.group-card');
+    
+    groupCards.forEach(card => {
+        const name = card.dataset.name;
+        const match = !searchTerm || name.includes(searchTerm);
+        card.style.display = match ? 'block' : 'none';
+    });
+}
+
+function selectAllGroups() {
+    const checkboxes = document.querySelectorAll('.group-select');
+    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = !allChecked;
+    });
+    
+    updateBulkActions();
+}
+
+function updateBulkActions() {
+    const selectedCount = document.querySelectorAll('.group-select:checked').length;
+    const bulkMoveBtn = document.getElementById('bulk-move-btn');
+    const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+    
+    bulkMoveBtn.disabled = selectedCount === 0;
+    bulkDeleteBtn.disabled = selectedCount === 0;
+}
+
+function manageDomains(groupId) {
+    managingGroupId = groupId;
+    const modal = document.getElementById('manage-domains-modal');
+    const title = document.getElementById('manage-domains-title');
+    const content = document.getElementById('manage-domains-content');
+    
+    title.textContent = 'Manage Group Domains';
+    content.innerHTML = '<div class="loading">Loading domains...</div>';
+    
+    modal.style.display = 'flex';
+    
+    // Load domains for this group
+    fetch(`/api/groups/${groupId}/domains`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        displayGroupDomains(data);
+    })
+    .catch(error => {
+        content.innerHTML = '<div class="error">Failed to load domains</div>';
+        console.error('Error:', error);
+    });
+}
+
+function displayGroupDomains(data) {
+    const content = document.getElementById('manage-domains-content');
+    
+    let html = `<h3>${data.group_name} Domains</h3>`;
+    
+    if (data.domains && data.domains.length > 0) {
+        html += '<div class="domains-list">';
+        html += '<div class="list-header">';
+        html += '<label class="checkbox-label">';
+        html += '<input type="checkbox" id="select-all-domains" onchange="toggleAllDomainSelection()">';
+        html += '<span class="checkmark"></span>';
+        html += '</label>';
+        html += '<span>Select All</span>';
+        html += '</div>';
+        
+        data.domains.forEach(domain => {
+            html += '<div class="domain-list-item">';
+            html += '<label class="checkbox-label">';
+            html += `<input type="checkbox" class="domain-select" value="${domain.id}">`;
+            html += '<span class="checkmark"></span>';
+            html += '</label>';
+            html += '<div class="domain-info">';
+            html += `<span class="domain-name">${domain.domain}</span>`;
+            html += `<span class="domain-ssl ${domain.ssl ? 'ssl-enabled' : 'ssl-disabled'}">${domain.ssl ? 'SSL' : 'HTTP'}</span>`;
+            html += '</div>';
+            html += '</div>';
+        });
+        
+        html += '</div>';
+        
+        // Add move to group selector
+        html += '<div class="move-section">';
+        html += '<h4>Move Selected Domains To:</h4>';
+        html += '<select id="target-group-select" class="form-select">';
+        html += '<option value="">Select Target Group</option>';
+        // TODO: Load available groups
+        html += '</select>';
+        html += '</div>';
+    } else {
+        html += '<div class="empty-domains">No domains in this group</div>';
+    }
+    
+    content.innerHTML = html;
+    
+    // Load available groups for moving
+    loadAvailableGroups();
+}
+
+function loadAvailableGroups() {
+    fetch('/api/groups/', {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(groups => {
+        const select = document.getElementById('target-group-select');
+        if (select) {
+            groups.forEach(group => {
+                if (group.id !== managingGroupId) {
+                    select.innerHTML += `<option value="${group.id}">${group.name}</option>`;
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error loading groups:', error);
+    });
+}
+
+function toggleAllDomainSelection() {
+    const selectAll = document.getElementById('select-all-domains');
+    const domainCheckboxes = document.querySelectorAll('.domain-select');
+    
+    domainCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+function moveSelectedDomains() {
+    const selectedDomains = Array.from(document.querySelectorAll('.domain-select:checked')).map(cb => parseInt(cb.value));
+    const targetGroupId = document.getElementById('target-group-select').value;
+    
+    if (selectedDomains.length === 0) {
+        showNotification('Please select domains to move', 'warning');
+        return;
+    }
+    
+    if (!targetGroupId) {
+        showNotification('Please select a target group', 'warning');
+        return;
+    }
+    
+    showLoading();
+    
+    fetch(`/api/groups/${targetGroupId}/move-domains`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(selectedDomains)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification(data.message, 'success');
+        closeManageDomainsModal();
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to move domains', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function editGroup(groupId) {
+    openGroupModal(groupId);
+}
+
+function deleteGroup(groupId) {
+    if (!confirm('Are you sure you want to delete this group? Domains in this group will become ungrouped.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    fetch(`/api/groups/${groupId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Group deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete group', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function bulkDeleteGroups() {
+    const selectedGroups = Array.from(document.querySelectorAll('.group-select:checked')).map(cb => parseInt(cb.value));
+    
+    if (selectedGroups.length === 0) {
+        showNotification('Please select groups to delete', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete ${selectedGroups.length} group(s)? This action cannot be undone.`)) {
+        return;
+    }
+    
+    showLoading();
+    
+    Promise.all(selectedGroups.map(groupId => 
+        fetch(`/api/groups/${groupId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${getAuthToken()}`
+            }
+        })
+    ))
+    .then(() => {
+        hideLoading();
+        showNotification('Groups deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete some groups', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function loadGroupData(groupId) {
+    showLoading();
+    
+    fetch(`/api/groups/${groupId}`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        // Fill form with group data
+        document.getElementById('group-name').value = data.name;
+        document.getElementById('group-description').value = data.description || '';
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to load group data', 'error');
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}

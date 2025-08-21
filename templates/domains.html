@@ -1,0 +1,575 @@
+{% extends "base.html" %}
+
+{% block title %}Domains - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}Domains{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-primary" onclick="openDomainModal()">
+    <svg viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+    </svg>
+    Add Domain
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="domains-page">
+    <!-- Filters -->
+    <div class="filters-bar">
+        <div class="filter-group">
+            <select id="group-filter" class="form-select" onchange="filterDomains()">
+                <option value="">All Groups</option>
+                {% for group in groups %}
+                <option value="{{ group.id }}" {% if selected_group_id == group.id %}selected{% endif %}>{{ group.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="server-filter" class="form-select" onchange="filterDomains()">
+                <option value="">All Servers</option>
+                {% for server in servers %}
+                <option value="{{ server.id }}" {% if selected_server_id == server.id %}selected{% endif %}>{{ server.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group">
+            <select id="ssl-filter" class="form-select" onchange="filterDomains()">
+                <option value="">All SSL Status</option>
+                <option value="true">SSL Enabled</option>
+                <option value="false">SSL Disabled</option>
+            </select>
+        </div>
+        <div class="search-box">
+            <input type="text" id="domain-search" placeholder="Search domains..." oninput="filterDomains()">
+            <svg class="search-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+            </svg>
+        </div>
+    </div>
+
+    <!-- Domains Table -->
+    <div class="domains-table-container">
+        <table class="domains-table">
+            <thead>
+                <tr>
+                    <th>Domain</th>
+                    <th>Server</th>
+                    <th>SSL</th>
+                    <th>Upstream</th>
+                    <th>Group</th>
+                    <th>NS Policy</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for domain in domains %}
+                <tr class="domain-row" 
+                    data-domain="{{ domain.domain|lower }}" 
+                    data-group="{{ domain.group_id or '' }}" 
+                    data-server="{{ domain.server_id }}" 
+                    data-ssl="{{ domain.ssl|lower }}">
+                    <td>
+                        <div class="domain-name">
+                            <span class="domain-url">{{ domain.domain }}</span>
+                            {% if domain.notes %}
+                            <span class="domain-notes" title="{{ domain.notes }}">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                                </svg>
+                            </span>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span class="server-name">
+                            {% for server in servers %}
+                                {% if server.id == domain.server_id %}{{ server.name }}{% endif %}
+                            {% endfor %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="ssl-status {% if domain.ssl %}ssl-enabled{% else %}ssl-disabled{% endif %}">
+                            {% if domain.ssl %}
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
+                                </svg>
+                                HTTPS
+                            {% else %}
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                                </svg>
+                                HTTP
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="upstream-name">
+                            {% for upstream in upstreams %}
+                                {% if upstream.id == domain.upstream_id %}{{ upstream.name }}{% endif %}
+                            {% endfor %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if domain.group %}
+                            <span class="group-badge">{{ domain.group.name }}</span>
+                        {% else %}
+                            <span class="no-group">No Group</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span class="ns-policy">{{ domain.ns_policy }}</span>
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-icon" onclick="deployDomain({{ domain.id }})" title="Deploy">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="verifyDNS({{ domain.id }})" title="Verify DNS">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="viewNginxConfig({{ domain.id }})" title="View Config">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="editDomain({{ domain.id }})" title="Edit">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                                </svg>
+                            </button>
+                            <button class="btn-icon" onclick="deleteDomain({{ domain.id }})" title="Delete">
+                                <svg viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% if not domains %}
+    <div class="empty-state">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+        <h3>No Domains Configured</h3>
+        <p>Add domains to configure reverse proxy and SSL certificates.</p>
+        <button class="btn btn-primary" onclick="openDomainModal()">Add Domain</button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Domain Modal -->
+<div id="domain-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="domain-modal-title">Add Domain</h2>
+            <button class="modal-close" onclick="closeDomainModal()">&times;</button>
+        </div>
+        <form id="domain-form" onsubmit="submitDomain(event)">
+            <div class="modal-body">
+                <div class="form-group">
+                    <label for="domain-name">Domain Name</label>
+                    <input type="text" id="domain-name" name="domain" required placeholder="example.com">
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="domain-server">Server</label>
+                        <select id="domain-server" name="server_id" required>
+                            <option value="">Select Server</option>
+                            {% for server in servers %}
+                            <option value="{{ server.id }}">{{ server.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="domain-upstream">Upstream</label>
+                        <select id="domain-upstream" name="upstream_id" required>
+                            <option value="">Select Upstream</option>
+                            {% for upstream in upstreams %}
+                            <option value="{{ upstream.id }}">{{ upstream.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="domain-group">Group (optional)</label>
+                        <select id="domain-group" name="group_id">
+                            <option value="">No Group</option>
+                            {% for group in groups %}
+                            <option value="{{ group.id }}">{{ group.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="domain-ns-policy">NS Policy</label>
+                        <input type="text" id="domain-ns-policy" name="ns_policy" value="dnspod" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="domain-ssl" name="ssl">
+                        <span class="checkmark"></span>
+                        Enable SSL/HTTPS
+                    </label>
+                    <small class="form-help">Automatically obtain Let's Encrypt certificate</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="domain-notes">Notes (optional)</label>
+                    <textarea id="domain-notes" name="notes" rows="3" placeholder="Additional notes or comments"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDomainModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Domain</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Nginx Config Modal -->
+<div id="nginx-config-modal" class="modal">
+    <div class="modal-content large">
+        <div class="modal-header">
+            <h2>Nginx Configuration</h2>
+            <button class="modal-close" onclick="closeNginxConfigModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="nginx-config-content">
+                <pre><code id="nginx-config-code"></code></pre>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeNginxConfigModal()">Close</button>
+            <button class="btn btn-primary" onclick="copyNginxConfig()">Copy to Clipboard</button>
+        </div>
+    </div>
+</div>
+
+<!-- DNS Verification Modal -->
+<div id="dns-modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>DNS Verification Results</h2>
+            <button class="modal-close" onclick="closeDNSModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="dns-results"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeDNSModal()">Close</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let editingDomainId = null;
+
+function openDomainModal(domainId = null) {
+    editingDomainId = domainId;
+    const modal = document.getElementById('domain-modal');
+    const form = document.getElementById('domain-form');
+    const title = document.getElementById('domain-modal-title');
+    
+    if (domainId) {
+        title.textContent = 'Edit Domain';
+        loadDomainData(domainId);
+    } else {
+        title.textContent = 'Add Domain';
+        form.reset();
+    }
+    
+    modal.style.display = 'flex';
+}
+
+function closeDomainModal() {
+    document.getElementById('domain-modal').style.display = 'none';
+    editingDomainId = null;
+}
+
+function closeNginxConfigModal() {
+    document.getElementById('nginx-config-modal').style.display = 'none';
+}
+
+function closeDNSModal() {
+    document.getElementById('dns-modal').style.display = 'none';
+}
+
+function submitDomain(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const domainData = Object.fromEntries(formData.entries());
+    
+    // Convert checkbox to boolean
+    domainData.ssl = !!formData.get('ssl');
+    
+    // Convert empty strings to null for optional fields
+    Object.keys(domainData).forEach(key => {
+        if (domainData[key] === '' && key !== 'ssl') {
+            domainData[key] = null;
+        }
+    });
+    
+    const url = editingDomainId ? `/api/domains/${editingDomainId}` : '/api/domains/';
+    const method = editingDomainId ? 'PUT' : 'POST';
+    
+    showLoading();
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(domainData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification('Domain saved successfully', 'success');
+            closeDomainModal();
+            location.reload();
+        } else {
+            showNotification(data.detail || 'Failed to save domain', 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save domain', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function filterDomains() {
+    const groupFilter = document.getElementById('group-filter').value;
+    const serverFilter = document.getElementById('server-filter').value;
+    const sslFilter = document.getElementById('ssl-filter').value;
+    const searchTerm = document.getElementById('domain-search').value.toLowerCase();
+    const domainRows = document.querySelectorAll('.domain-row');
+    
+    domainRows.forEach(row => {
+        const group = row.dataset.group;
+        const server = row.dataset.server;
+        const ssl = row.dataset.ssl;
+        const domain = row.dataset.domain;
+        
+        const groupMatch = !groupFilter || group === groupFilter;
+        const serverMatch = !serverFilter || server === serverFilter;
+        const sslMatch = !sslFilter || ssl === sslFilter;
+        const domainMatch = !searchTerm || domain.includes(searchTerm);
+        
+        row.style.display = groupMatch && serverMatch && sslMatch && domainMatch ? '' : 'none';
+    });
+}
+
+function deployDomain(domainId) {
+    const email = prompt('Enter email address for SSL certificate:');
+    if (!email) return;
+    
+    showLoading();
+    
+    fetch(`/api/domains/${domainId}/deploy?email=${encodeURIComponent(email)}`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification('Domain deployment started', 'success');
+            openTaskProgressModal(data.id, data.name);
+        } else {
+            showNotification(data.detail || 'Failed to start deployment', 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to start deployment', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function verifyDNS(domainId) {
+    showLoading();
+    
+    fetch(`/api/domains/${domainId}/verify-dns`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showDNSResults(data);
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to verify DNS', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function showDNSResults(data) {
+    const modal = document.getElementById('dns-modal');
+    const resultsDiv = document.getElementById('dns-results');
+    
+    let html = `<h3>DNS Verification for ${data.domain}</h3>`;
+    
+    // DNS Check
+    html += '<div class="dns-result-section">';
+    html += '<h4>A Record Check</h4>';
+    if (data.dns_check.points_to_server) {
+        html += '<div class="result-item success">';
+        html += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+        html += `<span>${data.dns_check.message}</span>`;
+        html += '</div>';
+    } else {
+        html += '<div class="result-item error">';
+        html += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+        html += `<span>${data.dns_check.message}</span>`;
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    // NS Check
+    html += '<div class="dns-result-section">';
+    html += '<h4>Nameserver Check</h4>';
+    if (data.ns_check.valid) {
+        html += '<div class="result-item success">';
+        html += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+        html += '<span>Nameservers match policy</span>';
+        html += '</div>';
+    } else {
+        html += '<div class="result-item error">';
+        html += '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+        html += `<span>${data.ns_check.error || 'Nameserver check failed'}</span>`;
+        html += '</div>';
+    }
+    
+    if (data.ns_check.servers && data.ns_check.servers.length > 0) {
+        html += '<div class="ns-servers">';
+        html += '<h5>Nameservers:</h5>';
+        html += '<ul>';
+        data.ns_check.servers.forEach(server => {
+            html += `<li>${server}</li>`;
+        });
+        html += '</ul>';
+        html += '</div>';
+    }
+    html += '</div>';
+    
+    resultsDiv.innerHTML = html;
+    modal.style.display = 'flex';
+}
+
+function viewNginxConfig(domainId) {
+    showLoading();
+    
+    fetch(`/api/domains/${domainId}/nginx-config`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        const modal = document.getElementById('nginx-config-modal');
+        const codeElement = document.getElementById('nginx-config-code');
+        codeElement.textContent = data.config;
+        modal.style.display = 'flex';
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to load Nginx configuration', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function copyNginxConfig() {
+    const codeElement = document.getElementById('nginx-config-code');
+    navigator.clipboard.writeText(codeElement.textContent).then(() => {
+        showNotification('Configuration copied to clipboard', 'success');
+    }).catch(() => {
+        showNotification('Failed to copy to clipboard', 'error');
+    });
+}
+
+function editDomain(domainId) {
+    openDomainModal(domainId);
+}
+
+function deleteDomain(domainId) {
+    if (!confirm('Are you sure you want to delete this domain? This action cannot be undone.')) {
+        return;
+    }
+    
+    showLoading();
+    
+    fetch(`/api/domains/${domainId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Domain deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete domain', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function loadDomainData(domainId) {
+    showLoading();
+    
+    fetch(`/api/domains/${domainId}`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        // Fill form with domain data
+        document.getElementById('domain-name').value = data.domain;
+        document.getElementById('domain-server').value = data.server_id;
+        document.getElementById('domain-upstream').value = data.upstream_id;
+        document.getElementById('domain-group').value = data.group_id || '';
+        document.getElementById('domain-ns-policy').value = data.ns_policy;
+        document.getElementById('domain-ssl').checked = data.ssl;
+        document.getElementById('domain-notes').value = data.notes || '';
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to load domain data', 'error');
+        console.error('Error:', error);
+    });
+}
+</script>
+{% endblock %}
