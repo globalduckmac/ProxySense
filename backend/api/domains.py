@@ -2,7 +2,7 @@
 Domain management API endpoints.
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from datetime import datetime
@@ -10,7 +10,7 @@ import logging
 
 from backend.database import get_db
 from backend.models import Domain, DomainGroup, Server, Upstream, Task, TaskStatus, User
-from backend.auth import get_admin_user
+from backend.auth import get_admin_user, get_current_user_from_cookie
 from backend.nginx_templates import NginxConfig, NginxDeployment
 from backend.dns_utils import verify_domain_points_to_server, check_domain_ns
 from backend.ssh_client import SSHClient
@@ -71,15 +71,23 @@ class TaskResponse(BaseModel):
 
 @router.get("/", response_model=List[DomainResponse])
 async def list_domains(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     group_id: Optional[int] = None,
     server_id: Optional[int] = None,
     ssl: Optional[bool] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """List domains with optional filtering."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     query = db.query(Domain)
     
     if group_id is not None:
@@ -95,11 +103,19 @@ async def list_domains(
 
 @router.post("/", response_model=DomainResponse)
 async def create_domain(
+    request: Request,
     domain_data: DomainCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Create a new domain."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     # Check if domain already exists
     existing_domain = db.query(Domain).filter(Domain.domain == domain_data.domain).first()
     if existing_domain:
@@ -154,11 +170,19 @@ async def create_domain(
 
 @router.get("/{domain_id}", response_model=DomainResponse)
 async def get_domain(
+    request: Request,
     domain_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Get a specific domain."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     domain = db.query(Domain).filter(Domain.id == domain_id).first()
     if not domain:
         raise HTTPException(
@@ -170,12 +194,20 @@ async def get_domain(
 
 @router.put("/{domain_id}", response_model=DomainResponse)
 async def update_domain(
+    request: Request,
     domain_id: int,
     domain_data: DomainUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Update a domain."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     domain = db.query(Domain).filter(Domain.id == domain_id).first()
     if not domain:
         raise HTTPException(
@@ -231,11 +263,19 @@ async def update_domain(
 
 @router.delete("/{domain_id}")
 async def delete_domain(
+    request: Request,
     domain_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Delete a domain."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     domain = db.query(Domain).filter(Domain.id == domain_id).first()
     if not domain:
         raise HTTPException(
@@ -253,13 +293,21 @@ async def delete_domain(
 
 @router.post("/{domain_id}/deploy", response_model=TaskResponse)
 async def deploy_domain(
+    request: Request,
     domain_id: int,
     background_tasks: BackgroundTasks,
     email: str = "admin@example.com",
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Deploy domain configuration to server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     domain = db.query(Domain).filter(Domain.id == domain_id).first()
     if not domain:
         raise HTTPException(
@@ -287,11 +335,19 @@ async def deploy_domain(
 
 @router.post("/{domain_id}/verify-dns")
 async def verify_domain_dns(
+    request: Request,
     domain_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Verify domain DNS configuration."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     domain = db.query(Domain).filter(Domain.id == domain_id).first()
     if not domain:
         raise HTTPException(
@@ -341,11 +397,19 @@ async def verify_domain_dns(
 
 @router.get("/{domain_id}/nginx-config")
 async def get_nginx_config(
+    request: Request,
     domain_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Get Nginx configuration for a domain."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+        
     domain = db.query(Domain).filter(Domain.id == domain_id).first()
     if not domain:
         raise HTTPException(
