@@ -8,6 +8,23 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Server Monitoring System Implementation
+- **Date**: August 21, 2025
+- **Change**: Implemented comprehensive automatic server monitoring system
+- **Features**: 
+  - Background monitoring service checking server availability every 30 seconds
+  - Real-time status updates on web interface every 10 seconds
+  - Last check timestamp display on server cards
+  - Database column `last_check_at` added to track monitoring times
+- **Implementation**: Created `backend/server_monitor.py` service, API endpoint `/api/servers/status`, JavaScript auto-update functions
+- **Result**: Working automatic server availability monitoring with real-time UI updates
+
+## Group Management Authentication Fix
+- **Date**: August 21, 2025
+- **Change**: Fixed 401 Unauthorized error when creating domain groups
+- **Implementation**: Updated `backend/api/groups.py` to use cookie-based authentication like other UI endpoints
+- **Result**: Group creation now works properly from web interface
+
 ## Glances API Version Update & Server Monitoring Enhancement
 - **Date**: August 21, 2025
 - **Change**: Fixed Glances API version issues and added individual server monitoring pages
@@ -31,10 +48,10 @@ Preferred communication style: Simple, everyday language.
 
 ## Authentication System Migration
 - **Date**: August 21, 2025  
-- **Change**: Migrated all domain and server management endpoints from JWT to cookie-based authentication
-- **Affected Endpoints**: Domain creation, DNS verification, server probe operations
+- **Change**: Migrated all domain, server, and group management endpoints from JWT to cookie-based authentication
+- **Affected Endpoints**: Domain creation, DNS verification, server probe operations, group management
 - **Implementation**: Replaced `get_admin_user` dependency with `get_current_user_from_cookie` for web UI operations
-- **Result**: Resolved 403 Forbidden errors in web interface operations
+- **Result**: Resolved 403/401 Forbidden/Unauthorized errors in web interface operations
 
 ## Server Management Enhancements
 - **Date**: August 21, 2025

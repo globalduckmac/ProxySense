@@ -2,7 +2,7 @@
 Domain group management API endpoints.
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from pydantic import BaseModel
@@ -11,7 +11,7 @@ import logging
 
 from backend.database import get_db
 from backend.models import DomainGroup, Domain, User
-from backend.auth import get_admin_user
+from backend.auth import get_admin_user, get_current_user_from_cookie
 
 logger = logging.getLogger(__name__)
 
@@ -49,12 +49,20 @@ class DomainGroupStats(BaseModel):
 
 @router.get("/", response_model=List[DomainGroupResponse])
 async def list_domain_groups(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """List all domain groups with statistics."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     # Query groups with domain counts
     groups_query = (
         db.query(
@@ -88,11 +96,19 @@ async def list_domain_groups(
 
 @router.post("/", response_model=DomainGroupResponse)
 async def create_domain_group(
+    request: Request,
     group_data: DomainGroupCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Create a new domain group."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     # Check if group name already exists
     existing_group = db.query(DomainGroup).filter(DomainGroup.name == group_data.name).first()
     if existing_group:
