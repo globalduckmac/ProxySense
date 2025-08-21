@@ -525,10 +525,11 @@ async def run_deploy_domain_task(task_id: int, domain_id: int, email: str):
         ]
         
         # Generate Nginx configuration
+        # For SSL domains, first create HTTP-only config, then upgrade after SSL setup
         config = NginxConfig.generate_domain_config(
             domain.domain,
             upstream_targets,
-            ssl=domain.ssl
+            ssl=False  # Always start with HTTP config
         )
         
         task.progress = 20
@@ -641,10 +642,56 @@ async def run_deploy_domain_task(task_id: int, domain_id: int, email: str):
         
         # SSL certificate if needed
         if domain.ssl:
+            # Install certbot if not present
+            log = TaskLog(
+                task_id=task_id,
+                level="INFO",
+                source="ssl",
+                message="Installing certbot for SSL certificate..."
+            )
+            db.add(log)
+            db.commit()
+            
+            # Check if certbot exists
+            rc, stdout, stderr = await client.execute_command("which certbot")
+            if rc != 0:
+                # Install certbot based on OS
+                rc, stdout, stderr = await client.execute_command("cat /etc/os-release")
+                if rc == 0 and ("ubuntu" in stdout.lower() or "debian" in stdout.lower()):
+                    install_cmd = "apt update && apt install -y certbot python3-certbot-nginx"
+                elif rc == 0 and ("centos" in stdout.lower() or "rhel" in stdout.lower() or "fedora" in stdout.lower()):
+                    install_cmd = "yum install -y certbot python3-certbot-nginx || dnf install -y certbot python3-certbot-nginx"
+                else:
+                    install_cmd = "apt update && apt install -y certbot python3-certbot-nginx"
+                
+                rc, stdout, stderr = await client.execute_command(install_cmd)
+                if rc != 0:
+                    raise Exception(f"Failed to install certbot: {stderr}")
+            
+            # Get SSL certificate
             certbot_cmd = NginxConfig.generate_certbot_command(domain.domain, email)
             rc, stdout, stderr = await client.execute_command(certbot_cmd)
             if rc != 0:
                 raise Exception(f"SSL certificate generation failed: {stderr}")
+            
+            # Now regenerate config with SSL enabled
+            ssl_config = NginxConfig.generate_domain_config(
+                domain.domain,
+                upstream_targets,
+                ssl=True
+            )
+            
+            # Upload SSL configuration
+            if not await client.upload_file(ssl_config, config_path):
+                raise Exception("Failed to upload SSL Nginx configuration")
+            
+            log = TaskLog(
+                task_id=task_id,
+                level="INFO",
+                source="ssl",
+                message=f"SSL certificate obtained and configuration updated for {domain.domain}"
+            )
+            db.add(log)
             
             task.progress = 90
             db.commit()
