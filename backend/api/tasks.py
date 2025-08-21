@@ -2,7 +2,7 @@
 Task management API endpoints.
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -13,7 +13,7 @@ import logging
 
 from backend.database import get_db
 from backend.models import Task, TaskLog, TaskStatus, User
-from backend.auth import get_admin_user
+from backend.auth import get_admin_user, get_current_user_from_cookie
 
 logger = logging.getLogger(__name__)
 
@@ -184,11 +184,18 @@ async def delete_task(
 
 @router.get("/{task_id}/stream")
 async def stream_task_logs(
+    request: Request,
     task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Stream task logs via Server-Sent Events."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
