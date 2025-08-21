@@ -22,30 +22,42 @@ class TelegramClient:
         self.base_url = None
     
     async def _load_settings(self):
-        """Load Telegram settings dynamically from database."""
+        """Load Telegram settings from environment variables."""
         try:
-            from backend.database import SessionLocal
-            from backend.models import Setting
-            from backend.crypto import decrypt_if_needed
+            import os
             
-            with SessionLocal() as db:
-                bot_token_setting = db.query(Setting).filter(Setting.key == "telegram.bot_token").first()
-                chat_id_setting = db.query(Setting).filter(Setting.key == "telegram.chat_id").first()
-                
-                if bot_token_setting and bot_token_setting.value:
-                    self.bot_token = decrypt_if_needed(bot_token_setting.value)
-                else:
-                    self.bot_token = None
+            # Load from environment variables first
+            self.bot_token = os.getenv('TELEGRAM_BOT_TOKEN')
+            self.chat_id = os.getenv('TELEGRAM_CHAT_ID')
+            
+            # If not found in environment, try database (fallback)
+            if not self.bot_token or not self.chat_id:
+                try:
+                    from backend.database import SessionLocal
+                    from backend.models import Setting
+                    from backend.crypto import decrypt_if_needed
                     
-                if chat_id_setting and chat_id_setting.value:
-                    self.chat_id = decrypt_if_needed(chat_id_setting.value)
-                else:
-                    self.chat_id = None
+                    with SessionLocal() as db:
+                        if not self.bot_token:
+                            bot_token_setting = db.query(Setting).filter(Setting.key == "telegram.bot_token").first()
+                            if bot_token_setting and bot_token_setting.value:
+                                self.bot_token = decrypt_if_needed(bot_token_setting.value)
+                        
+                        if not self.chat_id:
+                            chat_id_setting = db.query(Setting).filter(Setting.key == "telegram.chat_id").first()
+                            if chat_id_setting and chat_id_setting.value:
+                                self.chat_id = decrypt_if_needed(chat_id_setting.value)
+                except Exception as db_error:
+                    logger.warning(f"Failed to load Telegram settings from database: {db_error}")
+            
+            if self.bot_token:
+                self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
+            else:
+                self.base_url = None
+                logger.warning("TELEGRAM_BOT_TOKEN not found in environment variables")
                 
-                if self.bot_token:
-                    self.base_url = f"https://api.telegram.org/bot{self.bot_token}"
-                else:
-                    self.base_url = None
+            if not self.chat_id:
+                logger.warning("TELEGRAM_CHAT_ID not found in environment variables")
                     
         except Exception as e:
             logger.error(f"Failed to load Telegram settings: {e}")

@@ -34,7 +34,8 @@ Preferred communication style: Simple, everyday language.
   - **Real-time Telegram Notifications**: All alerts automatically sent to Telegram with emojis and detailed information
   - **Alert State Management**: Prevents duplicate alerts, sends recovery notifications
   - **Comprehensive Coverage**: NS changes, server availability, resource usage alerts
-- **Implementation**: Enhanced `backend/server_monitor.py` and `backend/ns_monitor.py` with alert creation, state tracking, and Telegram integration
+  - **Environment Variable Integration**: Telegram tokens loaded from TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables
+- **Implementation**: Enhanced `backend/server_monitor.py` and `backend/ns_monitor.py` with alert creation, state tracking, and Telegram integration. Updated `backend/telegram_client.py` to read from environment variables
 - **Result**: Complete alerting system operational - NS record changes, server availability, CPU load, memory usage, and disk space alerts working with Telegram notifications
 
 ## Custom Nginx Configuration Templates Implementation
