@@ -14,18 +14,22 @@ Preferred communication style: Simple, everyday language.
 - Implemented detailed installation documentation (`install.md`)
 - **FIXED**: Corrected .env file generation in deployment script - removed incompatible variables (`JWT_SECRET_KEY`, `HOST`, `PORT`) that caused Pydantic validation errors
 - **FIXED**: Updated `.env.example` to match actual application configuration requirements
+- **FIXED**: Application user creation and directory ownership - deployment scripts now properly create `rpmonitor` user and set correct permissions
+- **FIXED**: Automatic admin user creation - deployment scripts now create first admin user (admin/admin123) automatically
 - Deployment features:
   - Automatic system updates and dependency installation
   - Python 3.11 setup from PPA
   - PostgreSQL database configuration
-  - Application user creation and security
+  - Application user creation and security with proper ownership
   - Systemd service configuration for auto-startup
   - Nginx reverse proxy setup with optional SSL
   - UFW firewall configuration
   - Log rotation and monitoring setup
   - Automatic update script generation
+  - First admin user creation (admin/admin123)
 - Fixed password change API functionality (parameter passing errors resolved)
 - Enhanced user management system with modern card-based UI
+- Successfully tested deployment on Ubuntu server - all services running correctly
 
 # System Architecture
 

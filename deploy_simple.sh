@@ -149,6 +149,48 @@ except Exception as e:
 " 2>/dev/null || echo "Инициализация завершена"
 EOF
 
+# Создание администратора
+log "Создание администратора..."
+sudo -u $APP_USER bash << EOF
+cd $INSTALL_DIR
+source venv/bin/activate
+export PYTHONPATH=\$PWD
+python -c "
+import os
+os.environ.setdefault('DATABASE_URL', 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME')
+try:
+    from backend.database import get_db
+    from backend.models import User
+    from backend.auth import get_password_hash
+    from sqlalchemy.orm import Session
+    
+    # Создаем сессию БД
+    db = next(get_db())
+    
+    # Проверяем есть ли уже админ
+    existing_admin = db.query(User).filter(User.username == 'admin').first()
+    if existing_admin:
+        print('Администратор admin уже существует')
+    else:
+        # Создаем админа
+        admin_user = User(
+            username='admin',
+            email='admin@localhost',
+            hashed_password=get_password_hash('admin123'),
+            is_active=True,
+            role='admin'
+        )
+        db.add(admin_user)
+        db.commit()
+        print('Администратор создан: admin / admin123')
+except Exception as e:
+    print(f'Ошибка создания администратора: {e}')
+finally:
+    if 'db' in locals():
+        db.close()
+" 2>/dev/null || echo "Администратор не создан, возможно уже существует"
+EOF
+
 # Тестирование приложения
 log "Тестирование запуска приложения..."
 cd $INSTALL_DIR
@@ -204,6 +246,10 @@ chown $APP_USER:$APP_USER $INSTALL_DIR/logs
 
 # Запуск сервисов
 log "Запуск сервисов..."
+
+# Убедимся что у пользователя rpmonitor есть права на папку
+chown -R $APP_USER:$APP_USER $INSTALL_DIR
+
 systemctl start reverse-proxy-monitor
 systemctl restart nginx
 

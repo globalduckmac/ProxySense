@@ -221,8 +221,9 @@ create_app_user() {
         else
             sudo useradd -r -s /bin/bash -d $INSTALL_DIR $APP_USER
         fi
+        log "Пользователь $APP_USER создан"
     else
-        info "Пользователь $APP_USER уже существует"
+        log "Пользователь $APP_USER уже существует"
     fi
 }
 
@@ -237,7 +238,11 @@ clone_repository() {
     
     mkdir -p $INSTALL_DIR
     git clone $REPO_URL $INSTALL_DIR
+    
+    # Устанавливаем владельца папки
     chown -R $APP_USER:$APP_USER $INSTALL_DIR
+    
+    log "Репозиторий склонирован и права установлены"
 }
 
 # Установка Python зависимостей
@@ -316,6 +321,94 @@ try:
 except Exception as e:
     print('Database init completed')
 " 2>/dev/null || echo "Database init completed"
+EOF
+        fi
+    fi
+}
+
+# Создание первого администратора
+create_admin_user() {
+    if [[ $SETUP_POSTGRES =~ ^[Yy]$ ]]; then
+        log "Создание пользователя-администратора..."
+        
+        if [[ $USE_ROOT == true ]]; then
+            su $APP_USER -c "cd $INSTALL_DIR && source venv/bin/activate && export PYTHONPATH=\$PWD && python -c '
+import os
+os.environ.setdefault(\"DATABASE_URL\", \"postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME\")
+try:
+    from backend.database import get_db
+    from backend.models import User
+    from backend.auth import get_password_hash
+    from sqlalchemy.orm import Session
+    
+    # Создаем сессию БД
+    db = next(get_db())
+    
+    # Проверяем есть ли уже админ
+    existing_admin = db.query(User).filter(User.username == \"admin\").first()
+    if existing_admin:
+        print(\"Администратор admin уже существует\")
+    else:
+        # Создаем админа
+        admin_user = User(
+            username=\"admin\",
+            email=\"admin@localhost\",
+            hashed_password=get_password_hash(\"admin123\"),
+            is_active=True,
+            role=\"admin\"
+        )
+        db.add(admin_user)
+        db.commit()
+        print(\"Администратор создан: admin / admin123\")
+except Exception as e:
+    print(f\"Ошибка создания администратора: {e}\")
+    import traceback
+    traceback.print_exc()
+finally:
+    if \"db\" in locals():
+        db.close()
+'" || echo "Администратор не создан, возможно уже существует"
+        else
+            sudo -u $APP_USER bash << EOF
+cd $INSTALL_DIR
+source venv/bin/activate
+export PYTHONPATH=\$PWD
+python -c "
+import os
+os.environ.setdefault('DATABASE_URL', 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME')
+try:
+    from backend.database import get_db
+    from backend.models import User
+    from backend.auth import get_password_hash
+    from sqlalchemy.orm import Session
+    
+    # Создаем сессию БД
+    db = next(get_db())
+    
+    # Проверяем есть ли уже админ
+    existing_admin = db.query(User).filter(User.username == 'admin').first()
+    if existing_admin:
+        print('Администратор admin уже существует')
+    else:
+        # Создаем админа
+        admin_user = User(
+            username='admin',
+            email='admin@localhost',
+            hashed_password=get_password_hash('admin123'),
+            is_active=True,
+            role='admin'
+        )
+        db.add(admin_user)
+        db.commit()
+        print('Администратор создан: admin / admin123')
+except Exception as e:
+    print(f'Ошибка создания администратора: {e}')
+    import traceback
+    traceback.print_exc()
+finally:
+    if 'db' in locals():
+        db.close()
+" 2>/dev/null || echo "Администратор не создан, возможно уже существует"
 EOF
         fi
     fi
@@ -476,6 +569,9 @@ EOF
 start_services() {
     log "Запуск сервисов..."
     
+    # Убедимся что у пользователя rpmonitor есть права на папку
+    chown -R $APP_USER:$APP_USER $INSTALL_DIR
+    
     # Тестируем приложение перед запуском сервиса
     test_application
     
@@ -596,6 +692,7 @@ main() {
     install_python_deps
     create_env_file
     init_database
+    create_admin_user
     create_systemd_service
     configure_nginx
     configure_firewall
