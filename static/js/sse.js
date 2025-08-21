@@ -120,21 +120,52 @@ function updateTaskProgress(data) {
     }
     
     if (status && data.status) {
-        status.textContent = data.status;
+        // Map status values to user-friendly text
+        const statusMap = {
+            'PENDING': 'Pending...',
+            'RUNNING': 'Running...',
+            'COMPLETED': 'Completed ✓',
+            'FAILED': 'Failed ✗',
+            'pending': 'Pending...',
+            'running': 'Running...',
+            'completed': 'Completed ✓',
+            'failed': 'Failed ✗'
+        };
+        status.textContent = statusMap[data.status] || data.status;
     }
     
-    if (logs && data.log) {
+    // Handle different log formats
+    if (logs && (data.log || data.message)) {
         const logEntry = document.createElement('div');
         logEntry.className = 'log-entry';
-        logEntry.textContent = data.log;
+        
+        if (data.message) {
+            // Full log entry format
+            const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+            logEntry.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="log-level">${data.level || 'INFO'}</span>
+                <span class="log-message">${data.message}</span>
+            `;
+        } else if (data.log) {
+            // Simple log format
+            logEntry.textContent = data.log;
+        }
+        
         logs.appendChild(logEntry);
         logs.scrollTop = logs.scrollHeight;
     }
     
     // Close modal if task is complete
-    if (data.status === 'completed' || data.status === 'failed') {
+    if (data.status === 'COMPLETED' || data.status === 'FAILED' || 
+        data.status === 'completed' || data.status === 'failed') {
         setTimeout(() => {
             closeTaskModal();
+            if (data.status === 'COMPLETED' || data.status === 'completed') {
+                showNotification('Task completed successfully', 'success');
+            } else {
+                showNotification('Task failed', 'error');
+            }
         }, 2000);
     }
 }
