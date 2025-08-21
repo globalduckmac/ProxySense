@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 import logging
@@ -69,11 +69,10 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
 
 
 async def get_current_user_from_cookie(
-    request,
+    request: Request,
     db: Session = Depends(get_db)
 ) -> Optional[User]:
     """Get current user from cookie token."""
-    from fastapi import Request
     
     try:
         # Try to get token from cookie
