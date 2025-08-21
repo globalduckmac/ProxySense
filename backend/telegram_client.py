@@ -105,7 +105,7 @@ class TelegramClient:
             logger.warning("Telegram settings not configured for alert")
             return False
         
-        # Format alert message
+        # Format alert message (using HTML instead of Markdown)
         level_emoji = {
             "info": "ℹ️",
             "warning": "⚠️",
@@ -115,13 +115,19 @@ class TelegramClient:
         
         emoji = level_emoji.get(alert.level.value, "📢")
         
-        message = f"{emoji} *{alert.title}*\n\n"
-        message += f"{alert.message}\n\n"
-        message += f"*Level:* {alert.level.value.upper()}\n"
-        message += f"*Type:* {alert.alert_type}\n"
-        message += f"*Time:* {alert.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+        # Escape HTML characters in message content
+        import html
+        safe_title = html.escape(alert.title)
+        safe_message = html.escape(alert.message)
+        safe_type = html.escape(alert.alert_type)
         
-        return await self.send_message(message)
+        message = f"{emoji} <b>{safe_title}</b>\n\n"
+        message += f"{safe_message}\n\n"
+        message += f"<b>Level:</b> {alert.level.value.upper()}\n"
+        message += f"<b>Type:</b> {safe_type}\n"
+        message += f"<b>Time:</b> {alert.created_at.strftime('%Y-%m-%d %H:%M:%S UTC')}"
+        
+        return await self.send_message(message, parse_mode="HTML")
     
     async def send_server_down_alert(self, server_name: str, server_host: str, failure_count: int) -> bool:
         """Send server down alert."""

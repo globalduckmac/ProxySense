@@ -165,8 +165,12 @@ class ServerMonitorService:
         try:
             cpu_data = data.get('cpu', {})
             if isinstance(cpu_data, list) and len(cpu_data) > 0:
-                return float(cpu_data[0].get('total', 0))
-            return float(cpu_data.get('total', 0))
+                if isinstance(cpu_data[0], dict):
+                    return float(cpu_data[0].get('total', 0))
+                return 0.0
+            if isinstance(cpu_data, dict):
+                return float(cpu_data.get('total', 0))
+            return 0.0
         except (KeyError, ValueError, TypeError):
             return 0.0
     
