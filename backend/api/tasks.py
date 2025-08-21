@@ -60,16 +60,23 @@ class TaskDetailResponse(BaseModel):
 
 @router.get("/", response_model=List[TaskResponse])
 async def list_tasks(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
     status: Optional[TaskStatus] = None,
     task_type: Optional[str] = None,
     server_id: Optional[int] = None,
     domain_id: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """List tasks with optional filtering."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     query = db.query(Task)
     
     if status is not None:
@@ -94,11 +101,18 @@ async def list_tasks(
 
 @router.get("/{task_id}", response_model=TaskDetailResponse)
 async def get_task(
+    request: Request,
     task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Get a specific task with logs."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -122,14 +136,21 @@ async def get_task(
 
 @router.get("/{task_id}/logs", response_model=List[TaskLogResponse])
 async def get_task_logs(
+    request: Request,
     task_id: int,
     skip: int = 0,
     limit: int = 1000,
     level: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Get logs for a specific task."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -155,11 +176,18 @@ async def get_task_logs(
 
 @router.delete("/{task_id}")
 async def delete_task(
+    request: Request,
     task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Delete a task and its logs."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
@@ -277,11 +305,18 @@ async def stream_task_logs(
 
 @router.get("/{task_id}/download")
 async def download_task_logs(
+    request: Request,
     task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Download task logs as a text file."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     task = db.query(Task).filter(Task.id == task_id).first()
     if not task:
         raise HTTPException(
