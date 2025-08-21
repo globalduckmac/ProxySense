@@ -6,6 +6,25 @@ This project is a comprehensive reverse proxy and server monitoring system built
 
 Preferred communication style: Simple, everyday language.
 
+# Recent Changes
+
+## Deployment System (August 21, 2025)
+- Created comprehensive automated deployment script (`deploy.sh`) for Ubuntu 22.04
+- Added production-ready configuration files (`setup_requirements.txt`, `.env.example`)
+- Implemented detailed installation documentation (`install.md`)
+- Deployment features:
+  - Automatic system updates and dependency installation
+  - Python 3.11 setup from PPA
+  - PostgreSQL database configuration
+  - Application user creation and security
+  - Systemd service configuration for auto-startup
+  - Nginx reverse proxy setup with optional SSL
+  - UFW firewall configuration
+  - Log rotation and monitoring setup
+  - Automatic update script generation
+- Fixed password change API functionality (parameter passing errors resolved)
+- Enhanced user management system with modern card-based UI
+
 # System Architecture
 
 ## Frontend Architecture
