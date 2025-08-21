@@ -71,13 +71,11 @@ function deleteCookie(name) {
  * HTTP Request Utilities
  */
 async function apiRequest(url, options = {}) {
-    const token = getAuthToken();
-    
     const defaultOptions = {
         headers: {
-            'Content-Type': 'application/json',
-            ...(token && { 'Authorization': `Bearer ${token}` })
-        }
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include'  // Include cookies for authentication
     };
     
     const mergedOptions = {
@@ -817,6 +815,227 @@ function removeFromLocalStorage(key) {
     } catch (error) {
         console.error('Failed to remove from localStorage:', error);
         return false;
+    }
+}
+
+/**
+ * Upstream Management Functions
+ */
+function openUpstreamModal(upstreamId = null) {
+    const modal = document.getElementById('upstream-modal');
+    const form = document.getElementById('upstream-form');
+    const title = document.getElementById('upstream-modal-title');
+    
+    if (!modal || !form || !title) {
+        console.error('Upstream modal elements not found');
+        return;
+    }
+    
+    // Reset form
+    form.reset();
+    clearTargets();
+    
+    if (upstreamId) {
+        title.textContent = 'Edit Upstream';
+        loadUpstreamData(upstreamId);
+    } else {
+        title.textContent = 'Add Upstream';
+        addTarget(); // Add one default target
+    }
+    
+    modal.style.display = 'block';
+    App.activeModals.add('upstream-modal');
+}
+
+function closeUpstreamModal() {
+    const modal = document.getElementById('upstream-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        App.activeModals.delete('upstream-modal');
+    }
+}
+
+function addTarget() {
+    const container = document.getElementById('targets-container');
+    if (!container) return;
+    
+    const targetCount = container.children.length;
+    const targetHtml = `
+        <div class="target-item">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Host</label>
+                    <input type="text" name="targets[${targetCount}][host]" placeholder="192.168.1.100" required>
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" name="targets[${targetCount}][port]" placeholder="80" min="1" max="65535" required>
+                </div>
+                <div class="form-group">
+                    <label>Weight</label>
+                    <input type="number" name="targets[${targetCount}][weight]" value="1" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeTarget(this)">Remove</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', targetHtml);
+}
+
+function removeTarget(button) {
+    const targetItem = button.closest('.target-item');
+    if (targetItem) {
+        targetItem.remove();
+        reindexTargets();
+    }
+}
+
+function clearTargets() {
+    const container = document.getElementById('targets-container');
+    if (container) {
+        container.innerHTML = '';
+    }
+}
+
+function reindexTargets() {
+    const container = document.getElementById('targets-container');
+    if (!container) return;
+    
+    const targets = container.querySelectorAll('.target-item');
+    targets.forEach((target, index) => {
+        const inputs = target.querySelectorAll('input[name^="targets"]');
+        inputs.forEach(input => {
+            const name = input.name;
+            const field = name.match(/\[(\w+)\]$/)[1];
+            input.name = `targets[${index}][${field}]`;
+        });
+    });
+}
+
+async function saveUpstream() {
+    const form = document.getElementById('upstream-form');
+    if (!form) return;
+    
+    const formData = new FormData(form);
+    const data = {
+        name: formData.get('name'),
+        targets: []
+    };
+    
+    // Collect targets
+    const container = document.getElementById('targets-container');
+    const targets = container.querySelectorAll('.target-item');
+    
+    targets.forEach((target, index) => {
+        const host = target.querySelector(`input[name="targets[${index}][host]"]`)?.value;
+        const port = parseInt(target.querySelector(`input[name="targets[${index}][port]"]`)?.value);
+        const weight = parseInt(target.querySelector(`input[name="targets[${index}][weight]"]`)?.value) || 1;
+        
+        if (host && port) {
+            data.targets.push({ host, port, weight });
+        }
+    });
+    
+    if (data.targets.length === 0) {
+        showNotification('At least one target is required', 'error');
+        return;
+    }
+    
+    try {
+        showLoading('Saving upstream...');
+        
+        const response = await apiRequest('/api/upstreams/', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+        
+        if (response) {
+            showNotification('Upstream saved successfully', 'success');
+            closeUpstreamModal();
+            // Reload page to show new upstream
+            window.location.reload();
+        }
+    } catch (error) {
+        showNotification(`Failed to save upstream: ${error.message}`, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+async function deleteUpstream(upstreamId) {
+    if (!confirm('Are you sure you want to delete this upstream?')) {
+        return;
+    }
+    
+    try {
+        showLoading('Deleting upstream...');
+        
+        const response = await apiRequest(`/api/upstreams/${upstreamId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response !== null) {
+            showNotification('Upstream deleted successfully', 'success');
+            // Remove the upstream card from the page
+            const upstreamCard = document.querySelector(`[data-upstream-id="${upstreamId}"]`);
+            if (upstreamCard) {
+                upstreamCard.remove();
+            }
+        }
+    } catch (error) {
+        showNotification(`Failed to delete upstream: ${error.message}`, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
+function filterUpstreams() {
+    const searchInput = document.getElementById('upstream-search');
+    const searchTerm = searchInput.value.toLowerCase();
+    const upstreamCards = document.querySelectorAll('.upstream-card');
+    
+    upstreamCards.forEach(card => {
+        const name = card.getAttribute('data-name') || '';
+        const matches = name.includes(searchTerm);
+        card.style.display = matches ? '' : 'none';
+    });
+}
+
+/**
+ * Server Management Functions  
+ */
+function openServerModal(serverId = null) {
+    const modal = document.getElementById('server-modal');
+    const form = document.getElementById('server-form');
+    const title = document.getElementById('server-modal-title');
+    
+    if (!modal || !form || !title) {
+        console.error('Server modal elements not found');
+        return;
+    }
+    
+    // Reset form
+    form.reset();
+    
+    if (serverId) {
+        title.textContent = 'Edit Server';
+        loadServerData(serverId);
+    } else {
+        title.textContent = 'Add Server';
+    }
+    
+    modal.style.display = 'block';
+    App.activeModals.add('server-modal');
+}
+
+function closeServerModal() {
+    const modal = document.getElementById('server-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        App.activeModals.delete('server-modal');
     }
 }
 

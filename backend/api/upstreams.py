@@ -2,14 +2,14 @@
 Upstream management API endpoints.
 """
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import logging
 
 from backend.database import get_db
 from backend.models import Upstream, UpstreamTarget, User
-from backend.auth import get_admin_user
+from backend.auth import get_admin_user, get_current_user_from_cookie
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +67,18 @@ async def list_upstreams(
 
 @router.post("/", response_model=UpstreamResponse)
 async def create_upstream(
+    request: Request,
     upstream_data: UpstreamCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Create a new upstream."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     # Check if upstream name already exists
     existing_upstream = db.query(Upstream).filter(Upstream.name == upstream_data.name).first()
     if existing_upstream:

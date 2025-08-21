@@ -104,7 +104,7 @@
             <h2 id="upstream-modal-title">Add Upstream</h2>
             <button class="modal-close" onclick="closeUpstreamModal()">&times;</button>
         </div>
-        <form id="upstream-form" onsubmit="submitUpstream(event)">
+        <form id="upstream-form" onsubmit="event.preventDefault(); saveUpstream()">
             <div class="modal-body">
                 <div class="form-group">
                     <label for="upstream-name">Upstream Name</label>
@@ -172,7 +172,91 @@ function addTarget(host = '', port = '', weight = 1) {
             <div class="form-grid">
                 <div class="form-group">
                     <label>Host</label>
-                    <input type="text" name="targets[${targetId}][host]" value="${host}" required>
+                    <input type="text" name="targets[${targetId}][host]" value="${host}" placeholder="192.168.1.100" required>
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" name="targets[${targetId}][port]" value="${port}" placeholder="80" min="1" max="65535" required>
+                </div>
+                <div class="form-group">
+                    <label>Weight</label>
+                    <input type="number" name="targets[${targetId}][weight]" value="${weight || 1}" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="removeTarget('target-${targetId}')">Remove</button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    targetsContainer.insertAdjacentHTML('beforeend', targetHtml);
+}
+
+function removeTarget(targetId) {
+    const target = document.getElementById(targetId);
+    if (target) {
+        target.remove();
+    }
+}
+
+function submitUpstream(event) {
+    event.preventDefault();
+    saveUpstream();
+}
+
+async function saveUpstream() {
+    const form = document.getElementById('upstream-form');
+    const formData = new FormData(form);
+    
+    const data = {
+        name: formData.get('name'),
+        targets: []
+    };
+    
+    // Collect targets
+    const targetsContainer = document.getElementById('targets-container');
+    const targetInputs = targetsContainer.querySelectorAll('.target-input');
+    
+    targetInputs.forEach((targetDiv, index) => {
+        const hostInput = targetDiv.querySelector('input[name*="[host]"]');
+        const portInput = targetDiv.querySelector('input[name*="[port]"]');
+        const weightInput = targetDiv.querySelector('input[name*="[weight]"]');
+        
+        const host = hostInput?.value?.trim();
+        const port = parseInt(portInput?.value);
+        const weight = parseInt(weightInput?.value) || 1;
+        
+        if (host && port) {
+            data.targets.push({ host, port, weight });
+        }
+    });
+    
+    if (data.targets.length === 0) {
+        alert('At least one target is required');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/upstreams/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(data)
+        });
+        
+        if (response.ok) {
+            closeUpstreamModal();
+            location.reload(); // Reload page to show new upstream
+        } else {
+            const error = await response.json();
+            alert('Error: ' + (error.detail || 'Failed to save upstream'));
+        }
+    } catch (error) {
+        console.error('Error saving upstream:', error);
+        alert('Failed to save upstream');
+    }
                 </div>
                 <div class="form-group">
                     <label>Port</label>

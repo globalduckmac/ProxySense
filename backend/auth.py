@@ -68,6 +68,29 @@ def authenticate_user(db: Session, username: str, password: str) -> Optional[Use
     return user
 
 
+async def get_current_user_from_cookie(
+    request,
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Get current user from cookie token."""
+    from fastapi import Request
+    
+    try:
+        # Try to get token from cookie
+        token = request.cookies.get("access_token")
+        if not token:
+            return None
+        
+        username = verify_token(token)
+        if username is None:
+            return None
+        
+        user = db.query(User).filter(User.username == username).first()
+        return user if user and user.is_active else None
+    except:
+        return None
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
