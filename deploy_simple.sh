@@ -31,7 +31,7 @@ fi
 # Конфигурация
 APP_USER="rpmonitor"
 INSTALL_DIR="/opt/reverse-proxy-monitor"
-REPO_URL="https://github.com/your-username/reverse-proxy-monitor.git"
+REPO_URL="https://github.com/globalduckmac/ProxySense.git"
 DB_NAME="rpmonitor"
 DB_USER="rpmonitor"
 DB_PASSWORD=$(openssl rand -base64 32)
