@@ -10,8 +10,9 @@ from sqlalchemy import create_engine
 
 from backend.config import settings
 from backend.database import get_database_url
-from backend.models import Domain, NSCheck
+from backend.models import Domain, NSCheck, Alert, AlertLevel
 from backend.dns_utils import check_domain_ns
+from backend.telegram_client import TelegramClient
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,8 @@ class NSMonitorService:
     """Background NS monitoring service."""
     
     def __init__(self):
+        self.telegram_client = TelegramClient()
+        self.domain_alert_states: Dict[int, bool] = {}  # Track which domains have active NS alerts
         self.running = False
         self.monitor_task = None
     
@@ -108,6 +111,9 @@ class NSMonitorService:
             # Update domain's last check time
             domain.last_ns_check_at = datetime.utcnow()
             
+            # Check for NS alerts
+            await self._check_ns_alerts(db, domain, is_valid, ns_servers, error)
+            
             logger.debug(f"NS check completed for {domain.domain}: {is_valid}")
             
         except Exception as e:
@@ -124,6 +130,82 @@ class NSMonitorService:
             
             db.add(ns_check)
             domain.last_ns_check_at = datetime.utcnow()
+            
+            # Check for NS alerts
+            await self._check_ns_alerts(db, domain, False, [], str(e))
+    
+    async def _check_ns_alerts(self, db: Session, domain: Domain, is_valid: bool, ns_servers: List[str], error: str):
+        """Check and create NS alerts for a domain."""
+        domain_id = domain.id
+        
+        if not is_valid:
+            # NS check failed - create alert if not already active
+            if not self.domain_alert_states.get(domain_id, False):
+                await self._create_ns_failed_alert(db, domain, ns_servers, error)
+                self.domain_alert_states[domain_id] = True
+        else:
+            # NS check passed - clear alert if was active
+            if self.domain_alert_states.get(domain_id, False):
+                await self._create_ns_recovery_alert(db, domain, ns_servers)
+                self.domain_alert_states[domain_id] = False
+    
+    async def _create_ns_failed_alert(self, db: Session, domain: Domain, ns_servers: List[str], error: str):
+        """Create a NS check failed alert."""
+        ns_info = f"NS servers: {', '.join(ns_servers)}" if ns_servers else "No NS servers found"
+        
+        alert = Alert(
+            level=AlertLevel.WARNING,
+            title=f"🔍 NS check failed for {domain.domain}",
+            message=f"Domain {domain.domain} failed NS policy check '{domain.ns_policy}'. {ns_info}. Error: {error or 'Policy mismatch'}",
+            alert_type="ns_check_failed",
+            domain_id=domain.id
+        )
+        db.add(alert)
+        db.commit()
+        db.refresh(alert)
+        
+        # Send Telegram notification
+        await self.telegram_client.send_alert(alert)
+        
+        logger.warning(f"NS failed alert created for domain {domain.domain}")
+    
+    async def _create_ns_recovery_alert(self, db: Session, domain: Domain, ns_servers: List[str]):
+        """Create a NS recovery alert."""
+        ns_info = f"NS servers: {', '.join(ns_servers)}" if ns_servers else "NS resolved"
+        
+        alert = Alert(
+            level=AlertLevel.INFO,
+            title=f"✅ NS recovered for {domain.domain}",
+            message=f"Domain {domain.domain} NS policy '{domain.ns_policy}' is now valid. {ns_info}",
+            alert_type="ns_recovered",
+            domain_id=domain.id
+        )
+        db.add(alert)
+        db.commit()
+        db.refresh(alert)
+        
+        # Send Telegram notification
+        await self.telegram_client.send_alert(alert)
+        
+        logger.info(f"NS recovery alert created for domain {domain.domain}")
+    
+    async def _create_ns_error_alert(self, db: Session, domain: Domain, error: str):
+        """Create a NS check error alert."""
+        alert = Alert(
+            level=AlertLevel.ERROR,
+            title=f"❌ NS check error for {domain.domain}",
+            message=f"Failed to check NS records for domain {domain.domain}. Error: {error}",
+            alert_type="ns_check_error",
+            domain_id=domain.id
+        )
+        db.add(alert)
+        db.commit()
+        db.refresh(alert)
+        
+        # Send Telegram notification
+        await self.telegram_client.send_alert(alert)
+        
+        logger.error(f"NS error alert created for domain {domain.domain}")
 
 
 # Global monitor instance
