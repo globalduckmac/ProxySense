@@ -294,7 +294,15 @@ async def delete_server(
     server_name = server.name
     
     # Delete related records first to avoid foreign key constraint violations
-    from backend.models import Task, Alert, TaskLog
+    from backend.models import Task, Alert, TaskLog, Domain
+    
+    # Check if server has any domains that would be orphaned
+    domains_count = db.query(Domain).filter(Domain.server_id == server_id).count()
+    if domains_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Cannot delete server: {domains_count} domain(s) are still deployed to this server. Please undeploy or delete the domains first."
+        )
     
     # Get tasks for this server to delete their logs first
     tasks = db.query(Task).filter(Task.server_id == server_id).all()
