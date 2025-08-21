@@ -299,32 +299,50 @@ function loadServerData(serverId) {
     .then(data => {
         if (data.id) {
             // Fill form with server data
-            document.getElementById('server-name').value = data.name || '';
-            document.getElementById('server-host').value = data.host || '';
-            document.getElementById('server-port').value = data.ssh_port || 22;
-            document.getElementById('server-user').value = data.username || '';
-            document.getElementById('auth-type').value = data.auth_type || 'password';
+            const nameField = document.getElementById('server-name');
+            const hostField = document.getElementById('server-host');
+            const portField = document.getElementById('server-ssh-port');
+            const userField = document.getElementById('server-username');
+            const authTypeField = document.getElementById('auth-type');
+            
+            if (nameField) nameField.value = data.name || '';
+            if (hostField) hostField.value = data.host || '';
+            if (portField) portField.value = data.ssh_port || 22;
+            if (userField) userField.value = data.username || '';
+            if (authTypeField) authTypeField.value = data.auth_type || 'password';
             
             // Set password if available
             if (data.auth_type === 'password') {
-                document.getElementById('server-password').value = data.password || '';
+                const passwordField = document.getElementById('server-password');
+                if (passwordField) passwordField.value = '';  // Don't show encrypted password
             }
             
             // Set SSH key fields if available
             if (data.auth_type === 'ssh_key') {
-                document.getElementById('server-ssh-key').value = data.ssh_key || '';
-                document.getElementById('server-ssh-passphrase').value = data.ssh_key_passphrase || '';
+                const sshKeyField = document.getElementById('server-ssh-key');
+                const sshPassphraseField = document.getElementById('server-ssh-passphrase');
+                if (sshKeyField) sshKeyField.value = '';  // Don't show encrypted key
+                if (sshPassphraseField) sshPassphraseField.value = '';  // Don't show encrypted passphrase
             }
             
             // Set Glances config
-            document.getElementById('glances-scheme').value = data.glances_scheme || 'http';
-            document.getElementById('glances-host').value = data.glances_host || '';
-            document.getElementById('glances-port').value = data.glances_port || 61208;
-            document.getElementById('glances-path').value = data.glances_path || '/api/3/all';
-            document.getElementById('glances-auth-type').value = data.glances_auth_type || 'none';
-            document.getElementById('glances-username').value = data.glances_username || '';
-            document.getElementById('glances-password').value = data.glances_password || '';
-            document.getElementById('glances-token').value = data.glances_token || '';
+            const glancesSchemeField = document.getElementById('glances-scheme');
+            const glancesHostField = document.getElementById('glances-host');
+            const glancesPortField = document.getElementById('glances-port');
+            const glancesPathField = document.getElementById('glances-path');
+            const glancesAuthTypeField = document.getElementById('glances-auth-type');
+            const glancesUsernameField = document.getElementById('glances-username');
+            const glancesPasswordField = document.getElementById('glances-password');
+            const glancesTokenField = document.getElementById('glances-token');
+            
+            if (glancesSchemeField) glancesSchemeField.value = data.glances_scheme || 'http';
+            if (glancesHostField) glancesHostField.value = data.glances_host || '';
+            if (glancesPortField) glancesPortField.value = data.glances_port || 61208;
+            if (glancesPathField) glancesPathField.value = data.glances_path || '/api/3/all';
+            if (glancesAuthTypeField) glancesAuthTypeField.value = data.glances_auth_type || 'none';
+            if (glancesUsernameField) glancesUsernameField.value = data.glances_username || '';
+            if (glancesPasswordField) glancesPasswordField.value = '';  // Don't show encrypted password
+            if (glancesTokenField) glancesTokenField.value = '';  // Don't show encrypted token
             
             // Trigger auth field toggles
             toggleAuthFields();
