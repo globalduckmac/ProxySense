@@ -652,21 +652,47 @@ async def run_deploy_domain_task(task_id: int, domain_id: int, email: str):
             db.add(log)
             db.commit()
             
-            # Check if certbot exists
-            rc, stdout, stderr = await client.execute_command("which certbot")
+            # Check if certbot exists and works
+            rc, stdout, stderr = await client.execute_command("certbot --version")
             if rc != 0:
-                # Install certbot based on OS
+                # Install or fix certbot
+                log = TaskLog(
+                    task_id=task_id,
+                    level="INFO",
+                    source="ssl",
+                    message="Installing/updating certbot and fixing dependencies..."
+                )
+                db.add(log)
+                db.commit()
+                
+                # Remove old certbot and install from snap (more reliable)
                 rc, stdout, stderr = await client.execute_command("cat /etc/os-release")
                 if rc == 0 and ("ubuntu" in stdout.lower() or "debian" in stdout.lower()):
-                    install_cmd = "apt update && apt install -y certbot python3-certbot-nginx"
+                    # Remove old certbot packages first
+                    await client.execute_command("apt remove -y certbot python3-certbot-nginx")
+                    # Install snapd if not present
+                    await client.execute_command("apt update && apt install -y snapd")
+                    # Install certbot via snap (more reliable)
+                    install_cmd = "snap install --classic certbot && ln -sf /snap/bin/certbot /usr/bin/certbot"
                 elif rc == 0 and ("centos" in stdout.lower() or "rhel" in stdout.lower() or "fedora" in stdout.lower()):
-                    install_cmd = "yum install -y certbot python3-certbot-nginx || dnf install -y certbot python3-certbot-nginx"
+                    # Remove old packages
+                    await client.execute_command("yum remove -y certbot python3-certbot-nginx || dnf remove -y certbot python3-certbot-nginx")
+                    # Install via snap or epel
+                    install_cmd = "yum install -y epel-release && yum install -y certbot python3-certbot-nginx"
                 else:
-                    install_cmd = "apt update && apt install -y certbot python3-certbot-nginx"
+                    # Default to snap installation
+                    await client.execute_command("apt remove -y certbot python3-certbot-nginx")
+                    await client.execute_command("apt update && apt install -y snapd")
+                    install_cmd = "snap install --classic certbot && ln -sf /snap/bin/certbot /usr/bin/certbot"
                 
                 rc, stdout, stderr = await client.execute_command(install_cmd)
                 if rc != 0:
                     raise Exception(f"Failed to install certbot: {stderr}")
+                
+                # Verify installation
+                rc, stdout, stderr = await client.execute_command("certbot --version")
+                if rc != 0:
+                    raise Exception(f"Certbot installation verification failed: {stderr}")
             
             # Get SSL certificate
             certbot_cmd = NginxConfig.generate_certbot_command(domain.domain, email)
