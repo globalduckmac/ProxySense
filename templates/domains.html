@@ -563,5 +563,31 @@ function loadDomainData(domainId) {
         console.error('Error:', error);
     });
 }
+
+// Auto-update NS check times
+function updateNSCheckTimes() {
+    fetch('/api/domains/ns-status', {
+        method: 'GET',
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.domains) {
+            data.domains.forEach(domain => {
+                const nsCheckElement = document.getElementById(`last-ns-check-${domain.id}`);
+                if (nsCheckElement && domain.last_ns_check_at) {
+                    const lastCheck = new Date(domain.last_ns_check_at);
+                    nsCheckElement.textContent = lastCheck.toLocaleTimeString();
+                }
+            });
+        }
+    })
+    .catch(error => {
+        console.log('NS status update failed:', error);
+    });
+}
+
+// Start auto-update every 30 seconds for NS checks
+setInterval(updateNSCheckTimes, 30000);
 </script>
 {% endblock %}

@@ -35,6 +35,13 @@ class NSMonitorService:
         self.running = True
         self.monitor_task = asyncio.create_task(self._monitor_loop())
         logger.info("NS monitoring service started")
+        
+        # Run initial check immediately
+        try:
+            await self._check_all_domains()
+            logger.info("Initial NS check completed")
+        except Exception as e:
+            logger.error(f"Initial NS check failed: {e}")
     
     async def stop(self):
         """Stop the monitoring service."""

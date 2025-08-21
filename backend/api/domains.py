@@ -21,6 +21,34 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/ns-status")
+async def get_ns_status(
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Get NS check status for all domains."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated"
+        )
+    
+    domains = db.query(Domain).all()
+    
+    status_data = []
+    for domain in domains:
+        status_data.append({
+            "id": domain.id,
+            "domain": domain.domain,
+            "last_ns_check_at": domain.last_ns_check_at.isoformat() if domain.last_ns_check_at else None,
+            "ns_policy": domain.ns_policy
+        })
+    
+    return {"domains": status_data}
+
+
 class DomainCreate(BaseModel):
     domain: str
     server_id: int
@@ -604,3 +632,5 @@ async def run_deploy_domain_task(task_id: int, domain_id: int, email: str):
     
     finally:
         db.close()
+
+
