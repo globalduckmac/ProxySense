@@ -8,6 +8,19 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Complete User Management System Implementation
+- **Date**: August 21, 2025
+- **Change**: Implemented comprehensive user management system with web interface
+- **Features**: 
+  - **Admin User Controls**: Full user creation, editing, activation/deactivation, and deletion
+  - **Password Management**: Admin can change any user's password, users can change their own
+  - **Role-Based Access**: Admin-only access to user management section
+  - **Security Protection**: Users cannot delete their own accounts
+  - **Database Schema**: Updated users table with proper column naming (password_hash, last_login_at)
+  - **Navigation Integration**: Admin-only "Users" link in sidebar navigation
+- **Implementation**: Created `backend/api/users.py` API endpoints, `templates/users.html` interface, database migrations, and integrated with existing authentication system
+- **Result**: Complete user management functionality operational - admins can manage all users, regular users can change passwords
+
 ## Privacy-Enhanced Telegram Alerts
 - **Date**: August 21, 2025
 - **Change**: Enhanced Telegram notifications to protect sensitive information
