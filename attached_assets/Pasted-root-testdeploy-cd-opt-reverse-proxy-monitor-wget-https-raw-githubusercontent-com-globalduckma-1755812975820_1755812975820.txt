@@ -1,0 +1,36 @@
+root@testdeploy:~# cd /opt/reverse-proxy-monitor
+wget https://raw.githubusercontent.com/globalduckmac/ProxySense/refs/heads/main/quick_create_admin.sh
+chmod +x quick_create_admin.sh
+sudo ./quick_create_admin.sh
+--2025-08-21 21:49:12--  https://raw.githubusercontent.com/globalduckmac/ProxySense/refs/heads/main/quick_create_admin.sh
+Resolving raw.githubusercontent.com (raw.githubusercontent.com)... 185.199.109.133, 185.199.108.133, 185.199.110.133, ...
+Connecting to raw.githubusercontent.com (raw.githubusercontent.com)|185.199.109.133|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 4206 (4.1K) [text/plain]
+Saving to: ‘quick_create_admin.sh’
+
+quick_create_admin.sh                             100%[===========================================================================================================>]   4.11K  --.-KB/s    in 0s      
+
+2025-08-21 21:49:12 (49.9 MB/s) - ‘quick_create_admin.sh’ saved [4206/4206]
+
+[21:49:12] Создание администратора...
+(trapped) error reading bcrypt version
+Traceback (most recent call last):
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/passlib/handlers/bcrypt.py", line 620, in _load_backend_mixin
+    version = _bcrypt.__about__.__version__
+              ^^^^^^^^^^^^^^^^^
+AttributeError: module 'bcrypt' has no attribute '__about__'
+❌ Ошибка: 'is_admin' is an invalid keyword argument for User
+Traceback (most recent call last):
+  File "<string>", line 23, in <module>
+  File "<string>", line 4, in __init__
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py", line 566, in _initialize_instance
+    with util.safe_reraise():
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 146, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/sqlalchemy/orm/state.py", line 564, in _initialize_instance
+    manager.original_init(*mixed[1:], **kwargs)
+  File "/opt/reverse-proxy-monitor/venv/lib/python3.11/site-packages/sqlalchemy/orm/decl_base.py", line 2142, in _declarative_constructor
+    raise TypeError(
+TypeError: 'is_admin' is an invalid keyword argument for User
+root@testdeploy:/opt/reverse-proxy-monitor# 

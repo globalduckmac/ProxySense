@@ -459,7 +459,7 @@ try:
             username='admin',
             email='admin@example.com',
             password_hash=get_password_hash('admin123'),
-            is_admin=True,
+            role='admin',
             is_active=True
         )
         db.add(admin)

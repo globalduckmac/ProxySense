@@ -57,14 +57,14 @@ try:
         print(f'   ID: {existing_admin.id}')
         print(f'   Email: {existing_admin.email}')
         print(f'   Активен: {existing_admin.is_active}')
-        print(f'   Админ: {existing_admin.is_admin}')
+        print(f'   Роль: {existing_admin.role}')
     else:
         # Создаем админа
         admin_user = User(
             username='admin',
             email='admin@example.com',
             password_hash=get_password_hash('admin123'),
-            is_admin=True,
+            role='admin',
             is_active=True
         )
         
