@@ -49,6 +49,8 @@ class UpstreamResponse(BaseModel):
     updated_at: str
     targets: List[UpstreamTargetResponse]
     
+
+    
     class Config:
         from_attributes = True
 
@@ -62,7 +64,26 @@ async def list_upstreams(
 ):
     """List all upstreams."""
     upstreams = db.query(Upstream).offset(skip).limit(limit).all()
-    return upstreams
+    
+    # Convert to proper response format
+    result = []
+    for upstream in upstreams:
+        targets = [UpstreamTargetResponse(
+            id=target.id,
+            host=target.host,
+            port=target.port,
+            weight=target.weight
+        ) for target in upstream.targets]
+        
+        result.append(UpstreamResponse(
+            id=upstream.id,
+            name=upstream.name,
+            created_at=upstream.created_at.isoformat() if upstream.created_at else "",
+            updated_at=upstream.updated_at.isoformat() if upstream.updated_at else "",
+            targets=targets
+        ))
+    
+    return result
 
 
 @router.post("/", response_model=UpstreamResponse)
@@ -112,7 +133,20 @@ async def create_upstream(
     db.refresh(upstream)
     
     logger.info(f"Upstream {upstream.name} created by user {current_user.username}")
-    return upstream
+    
+    # Return properly formatted response
+    return UpstreamResponse(
+        id=upstream.id,
+        name=upstream.name,
+        created_at=upstream.created_at.isoformat() if upstream.created_at else "",
+        updated_at=upstream.updated_at.isoformat() if upstream.updated_at else "",
+        targets=[UpstreamTargetResponse(
+            id=target.id,
+            host=target.host,
+            port=target.port,
+            weight=target.weight
+        ) for target in upstream.targets]
+    )
 
 
 @router.get("/{upstream_id}", response_model=UpstreamResponse)
