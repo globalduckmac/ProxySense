@@ -161,6 +161,15 @@ def get_db_session():
 EOF
 
 # Исправляем main.py (критическое исправление 404)
+log "Исправление настроек cookie для web аутентификации..."
+# Исправляем backend/ui/routes.py для web login
+if [[ -f "backend/ui/routes.py" ]]; then
+    sed -i 's/secure=not settings\.DEBUG/secure=False/g' backend/ui/routes.py
+    # Добавляем samesite="lax" если его нет
+    sed -i '/httponly=True,$/a\        samesite="lax"  # Исправлено для работы с Nginx reverse proxy' backend/ui/routes.py
+    log "Cookie настройки в UI routes исправлены"
+fi
+
 log "Исправление main.py..."
 cat > main.py << 'EOF'
 """

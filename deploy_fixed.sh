@@ -286,11 +286,20 @@ EOF
 fix_auth_settings() {
     log "Исправление настроек аутентификации..."
     
+    # Исправляем backend/auth.py
     if [[ -f "backend/auth.py" ]]; then
         sed -i 's/secure=True/secure=False/g' backend/auth.py
         sed -i 's/samesite="strict"/samesite="lax"/g' backend/auth.py
         sed -i 's/samesite="Strict"/samesite="lax"/g' backend/auth.py
-        log "Cookie настройки исправлены для reverse proxy"
+        log "Cookie настройки в auth.py исправлены для reverse proxy"
+    fi
+    
+    # Исправляем backend/ui/routes.py для web login
+    if [[ -f "backend/ui/routes.py" ]]; then
+        sed -i 's/secure=not settings\.DEBUG/secure=False/g' backend/ui/routes.py
+        # Добавляем samesite="lax" если его нет
+        sed -i '/httponly=True,$/a\        samesite="lax"  # Исправлено для работы с Nginx reverse proxy' backend/ui/routes.py
+        log "Cookie настройки в UI routes исправлены для reverse proxy"
     fi
 }
 
