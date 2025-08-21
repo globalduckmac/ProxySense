@@ -6,6 +6,7 @@ from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+import sqlalchemy
 from typing import Optional
 import logging
 
@@ -60,10 +61,10 @@ async def dashboard_stream(
             try:
                 # Gather current statistics
                 total_servers = db.query(func.count(Server.id)).scalar() or 0
-                online_servers = db.query(func.count(Server.id)).filter(Server.status == ServerStatus.ok).scalar() or 0
+                online_servers = db.query(func.count(Server.id)).filter(Server.status == ServerStatus.OK).scalar() or 0
                 total_domains = db.query(func.count(Domain.id)).scalar() or 0
-                ssl_domains = db.query(func.count(Domain.id)).filter(Domain.ssl_enabled == True).scalar() or 0
-                unresolved_alerts = db.query(func.count(Alert.id)).filter(Alert.resolved_at.is_(None)).scalar() or 0
+                ssl_domains = db.query(func.count(Domain.id)).filter(Domain.ssl == True).scalar() or 0
+                unresolved_alerts = db.query(func.count(Alert.id)).filter(Alert.is_resolved == False).scalar() or 0
                 
                 stats = {
                     "total_servers": total_servers,
@@ -133,13 +134,42 @@ async def index(
     })
 
 
+@router.get("/api/ui/dashboard/stats")
+async def dashboard_stats_api(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """API endpoint for dashboard statistics."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Gather dashboard statistics
+    total_servers = db.query(func.count(Server.id)).scalar() or 0
+    online_servers = db.query(func.count(Server.id)).filter(Server.status == ServerStatus.OK).scalar() or 0
+    total_domains = db.query(func.count(Domain.id)).scalar() or 0
+    ssl_domains = db.query(func.count(Domain.id)).filter(Domain.ssl == True).scalar() or 0
+    unresolved_alerts = db.query(func.count(Alert.id)).filter(Alert.is_resolved == False).scalar() or 0
+    
+    return {
+        "total_servers": total_servers,
+        "online_servers": online_servers,
+        "total_domains": total_domains,
+        "ssl_domains": ssl_domains,
+        "unresolved_alerts": unresolved_alerts
+    }
+
+
 @router.get("/servers", response_class=HTMLResponse)
 async def servers_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Servers management page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
     servers = db.query(Server).order_by(Server.name).all()
     
     return templates.TemplateResponse("servers.html", {
@@ -153,9 +183,12 @@ async def servers_page(
 async def upstreams_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Upstreams management page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
     upstreams = db.query(Upstream).order_by(Upstream.name).all()
     
     return templates.TemplateResponse("upstreams.html", {
@@ -171,9 +204,12 @@ async def domains_page(
     group_id: Optional[int] = None,
     server_id: Optional[int] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Domains management page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
     query = db.query(Domain)
     
     if group_id:
@@ -204,15 +240,18 @@ async def domains_page(
 async def groups_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Domain groups management page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
     # Query groups with domain counts
     groups_query = (
         db.query(
             DomainGroup,
             func.count(Domain.id).label('domain_count'),
-            func.sum(func.cast(Domain.ssl, db.Integer)).label('ssl_count')
+            func.sum(func.cast(Domain.ssl, sqlalchemy.Integer)).label('ssl_count')
         )
         .outerjoin(Domain)
         .group_by(DomainGroup.id)
@@ -240,9 +279,12 @@ async def logs_page(
     task_type: Optional[str] = None,
     status: Optional[str] = None,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Logs and tasks page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
     query = db.query(Task)
     
     if task_type:
@@ -280,9 +322,12 @@ async def logs_page(
 async def settings_page(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
+    current_user: Optional[User] = Depends(get_current_user_optional)
 ):
     """Settings management page."""
+    if not current_user:
+        return RedirectResponse(url="/auth/login", status_code=302)
+        
     from backend.models import Setting
     from backend.crypto import decrypt_if_needed
     
@@ -322,10 +367,10 @@ async def settings_page(
         
         # Mask encrypted values
         if setting.is_encrypted and setting.value:
-            decrypted_value = decrypt_if_needed(setting.value)
+            decrypted_value = decrypt_if_needed(setting.value.encode() if isinstance(setting.value, str) else setting.value)
             display_value = "*" * min(len(decrypted_value), 8) if decrypted_value else ""
         else:
-            display_value = decrypt_if_needed(setting.value) if setting.value else ""
+            display_value = decrypt_if_needed(setting.value.encode() if isinstance(setting.value, str) else setting.value) if setting.value else ""
         
         categorized_settings[category].append({
             "setting": setting,
