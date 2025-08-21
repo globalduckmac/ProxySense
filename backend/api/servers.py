@@ -484,7 +484,7 @@ async def run_ssh_check_task(task_id: int, server_id: int):
         db.commit()
         
         # Perform SSH check
-        success, message = await ServerProvisioner.check_ssh_access(server)
+        success, message = await ServerProvisioner.check_ssh_access(server, task_id)
         
         # Update task progress
         task.progress = 100

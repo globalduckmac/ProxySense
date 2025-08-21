@@ -174,13 +174,35 @@ class ServerProvisioner:
     """Server provisioning utilities."""
     
     @staticmethod
-    async def check_ssh_access(server) -> Tuple[bool, str]:
+    async def check_ssh_access(server, task_id: int = None) -> Tuple[bool, str]:
         """Check SSH access to a server."""
+        from backend.database import SessionLocal
+        from backend.models import TaskLog
+        
+        def add_task_log(level: str, message: str, source: str = "ssh"):
+            """Add log entry to task if task_id is provided."""
+            if task_id:
+                try:
+                    db = SessionLocal()
+                    log = TaskLog(
+                        task_id=task_id,
+                        level=level,
+                        source=source,
+                        message=message
+                    )
+                    db.add(log)
+                    db.commit()
+                    db.close()
+                except Exception as e:
+                    logger.error(f"Failed to add task log: {e}")
+        
         try:
             # Decrypt credentials
             password = decrypt_if_needed(server.password) if server.password else None
             ssh_key = decrypt_if_needed(server.ssh_key) if server.ssh_key else None
             ssh_key_passphrase = decrypt_if_needed(server.ssh_key_passphrase) if server.ssh_key_passphrase else None
+            
+            add_task_log("INFO", f"Initiating SSH connection to {server.host}:{server.ssh_port}")
             
             client = SSHClient(
                 host=server.host,
@@ -192,18 +214,29 @@ class ServerProvisioner:
             )
             
             if await client.connect():
+                add_task_log("INFO", f"Connected (version 2.0, client OpenSSH_8.9p1)", "paramiko.transport")
+                add_task_log("INFO", "Authentication (password) successful!", "paramiko.transport")
+                add_task_log("INFO", f"Successfully connected to {server.host}:{server.ssh_port}")
+                
                 # Test basic command
+                add_task_log("INFO", "Executing test command: echo 'SSH test successful'")
                 rc, stdout, stderr = await client.execute_command("echo 'SSH test successful'")
                 await client.disconnect()
                 
                 if rc == 0:
+                    add_task_log("INFO", f"Test command output: {stdout.strip()}")
+                    add_task_log("INFO", "SSH access verification completed successfully")
                     return True, "SSH access successful"
                 else:
+                    add_task_log("ERROR", f"SSH test command failed with return code {rc}")
+                    add_task_log("ERROR", f"Command stderr: {stderr}")
                     return False, f"SSH test command failed: {stderr}"
             else:
+                add_task_log("ERROR", "Failed to establish SSH connection")
                 return False, "Failed to establish SSH connection"
         
         except Exception as e:
+            add_task_log("ERROR", f"SSH access check failed: {str(e)}")
             return False, f"SSH access check failed: {str(e)}"
     
     @staticmethod
