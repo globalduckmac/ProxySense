@@ -588,9 +588,10 @@ async def run_deploy_domain_task(task_id: int, domain_id: int, email: str):
         
     except Exception as e:
         logger.error(f"Error in domain deployment task: {e}")
-        task.status = TaskStatus.FAILED
-        task.error_message = str(e)
-        task.completed_at = datetime.utcnow()
+        if 'task' in locals():
+            task.status = TaskStatus.FAILED
+            task.error_message = str(e)
+            task.completed_at = datetime.utcnow()
         
         log = TaskLog(
             task_id=task_id,
