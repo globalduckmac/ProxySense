@@ -203,7 +203,7 @@
                         </div>
                         <div class="form-group">
                             <label for="glances-path">API Path</label>
-                            <input type="text" id="glances-path" name="glances_path" value="/api/3/all" required>
+                            <input type="text" id="glances-path" name="glances_path" value="/api/4/all" required>
                         </div>
                     </div>
                     <div class="form-group">
@@ -344,7 +344,7 @@ function loadServerData(serverId) {
             if (glancesSchemeField) glancesSchemeField.value = data.glances_scheme || 'http';
             if (glancesHostField) glancesHostField.value = data.glances_host || '';
             if (glancesPortField) glancesPortField.value = data.glances_port || 61208;
-            if (glancesPathField) glancesPathField.value = data.glances_path || '/api/3/all';
+            if (glancesPathField) glancesPathField.value = data.glances_path || '/api/4/all';
             if (glancesAuthTypeField) glancesAuthTypeField.value = data.glances_auth_type || 'none';
             if (glancesUsernameField) glancesUsernameField.value = data.glances_username || '';
             if (glancesPasswordField) glancesPasswordField.value = '';  // Don't show encrypted password
