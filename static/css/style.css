@@ -1933,15 +1933,17 @@ a:hover {
     box-shadow: var(--shadow-xl);
     width: 100%;
     max-width: 500px;
-    max-height: 90vh;
+    max-height: 85vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
     margin: auto;
+    position: relative;
 }
 
 .modal-content.large {
     max-width: 800px;
+    max-height: 90vh;
 }
 
 .modal-header {
@@ -1981,8 +1983,9 @@ a:hover {
 
 .modal-body {
     padding: var(--spacing-lg);
-    flex: 1;
+    flex: 1 1 auto;
     overflow-y: auto;
+    min-height: 0;
 }
 
 .modal-footer {
@@ -1992,6 +1995,23 @@ a:hover {
     gap: var(--spacing-sm);
     justify-content: flex-end;
     flex-shrink: 0;
+    background-color: var(--white);
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+}
+
+/* Force modal footer visibility */
+.modal-content .modal-footer {
+    display: flex !important;
+    visibility: visible !important;
+}
+
+/* Ensure modal content has proper height management */
+.modal-content.large {
+    height: auto;
+    min-height: 300px;
+}
 }
 
 /* Target Input Components */
