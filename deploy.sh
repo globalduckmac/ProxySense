@@ -270,22 +270,27 @@ DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
 
 # Security
 SECRET_KEY=$(openssl rand -hex 32)
-JWT_SECRET_KEY=$(openssl rand -hex 32)
 
 # Application
 DEBUG=False
-HOST=0.0.0.0
-PORT=$APP_PORT
+LOG_LEVEL=INFO
+
+# SSH
+SSH_TIMEOUT=30
+SSH_CONNECT_TIMEOUT=10
+
+# Glances
+GLANCES_POLL_INTERVAL=60
+GLANCES_TIMEOUT=10
+GLANCES_MAX_FAILURES=3
+
+# DNS
+DNS_TIMEOUT=5
+DNS_SERVERS=8.8.8.8,1.1.1.1
 
 # Telegram (опционально)
 # TELEGRAM_BOT_TOKEN=your_bot_token
 # TELEGRAM_CHAT_ID=your_chat_id
-
-# Email (опционально)
-# SMTP_SERVER=smtp.gmail.com
-# SMTP_PORT=587
-# SMTP_USERNAME=your_email@gmail.com
-# SMTP_PASSWORD=your_app_password
 EOF
 
     chown $APP_USER:$APP_USER $INSTALL_DIR/.env

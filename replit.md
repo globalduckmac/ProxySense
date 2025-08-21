@@ -12,6 +12,8 @@ Preferred communication style: Simple, everyday language.
 - Created comprehensive automated deployment script (`deploy.sh`) for Ubuntu 22.04
 - Added production-ready configuration files (`setup_requirements.txt`, `.env.example`)
 - Implemented detailed installation documentation (`install.md`)
+- **FIXED**: Corrected .env file generation in deployment script - removed incompatible variables (`JWT_SECRET_KEY`, `HOST`, `PORT`) that caused Pydantic validation errors
+- **FIXED**: Updated `.env.example` to match actual application configuration requirements
 - Deployment features:
   - Automatic system updates and dependency installation
   - Python 3.11 setup from PPA
