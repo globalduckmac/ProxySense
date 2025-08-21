@@ -287,6 +287,56 @@ function toggleGlancesAuth() {
     tokenAuth.style.display = authType === 'token' ? 'block' : 'none';
 }
 
+function loadServerData(serverId) {
+    fetch(`/api/servers/${serverId}`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.id) {
+            // Fill form with server data
+            document.getElementById('server-name').value = data.name || '';
+            document.getElementById('server-host').value = data.host || '';
+            document.getElementById('server-port').value = data.ssh_port || 22;
+            document.getElementById('server-user').value = data.username || '';
+            document.getElementById('auth-type').value = data.auth_type || 'password';
+            
+            // Set password if available
+            if (data.auth_type === 'password') {
+                document.getElementById('server-password').value = data.password || '';
+            }
+            
+            // Set SSH key fields if available
+            if (data.auth_type === 'ssh_key') {
+                document.getElementById('server-ssh-key').value = data.ssh_key || '';
+                document.getElementById('server-ssh-passphrase').value = data.ssh_key_passphrase || '';
+            }
+            
+            // Set Glances config
+            document.getElementById('glances-scheme').value = data.glances_scheme || 'http';
+            document.getElementById('glances-host').value = data.glances_host || '';
+            document.getElementById('glances-port').value = data.glances_port || 61208;
+            document.getElementById('glances-path').value = data.glances_path || '/api/3/all';
+            document.getElementById('glances-auth-type').value = data.glances_auth_type || 'none';
+            document.getElementById('glances-username').value = data.glances_username || '';
+            document.getElementById('glances-password').value = data.glances_password || '';
+            document.getElementById('glances-token').value = data.glances_token || '';
+            
+            // Trigger auth field toggles
+            toggleAuthFields();
+            toggleGlancesAuth();
+        }
+    })
+    .catch(error => {
+        console.error('Error loading server data:', error);
+        showNotification('Failed to load server data', 'error');
+    });
+}
+
 function submitServer(event) {
     event.preventDefault();
     

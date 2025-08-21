@@ -96,12 +96,19 @@ class TaskResponse(BaseModel):
 
 @router.get("/", response_model=List[ServerResponse])
 async def list_servers(
+    request: Request,
     skip: int = 0,
     limit: int = 100,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """List all servers."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     servers = db.query(Server).offset(skip).limit(limit).all()
     return servers
 
@@ -165,11 +172,18 @@ async def create_server(
 
 @router.get("/{server_id}", response_model=ServerResponse)
 async def get_server(
+    request: Request,
     server_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Get a specific server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
         raise HTTPException(
@@ -181,12 +195,19 @@ async def get_server(
 
 @router.put("/{server_id}", response_model=ServerResponse)
 async def update_server(
+    request: Request,
     server_id: int,
     server_data: ServerUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Update a server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
         raise HTTPException(
