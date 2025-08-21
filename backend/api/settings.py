@@ -2,10 +2,11 @@
 Settings management API endpoints.
 """
 from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 import logging
+from datetime import datetime
 
 from backend.database import get_db
 from backend.models import Setting, User
@@ -287,10 +288,11 @@ async def delete_setting(
 @router.post("/telegram/update")
 async def update_telegram_settings(
     telegram_data: TelegramSettingsUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     """Update Telegram notification settings."""
+    current_user = await get_current_user_from_cookie(request, db)
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -341,10 +343,11 @@ async def update_telegram_settings(
 
 @router.post("/telegram/test", response_model=TelegramTestResponse)
 async def test_telegram_connection(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user_from_cookie)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     """Test Telegram bot connection and send a test message."""
+    current_user = await get_current_user_from_cookie(request, db)
     if not current_user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -369,14 +372,16 @@ async def test_telegram_connection(
             )
         
         # Decrypt bot token
-        bot_token = decrypt_if_needed(bot_token_setting.value)
-        chat_id = decrypt_if_needed(chat_id_setting.value)
+        bot_token = decrypt_if_needed(bot_token_setting.value) if bot_token_setting.value else ""
+        chat_id = decrypt_if_needed(chat_id_setting.value) if chat_id_setting.value else ""
         
         # Create temporary client with settings from database
         telegram_client = TelegramClient()
-        telegram_client.bot_token = bot_token
-        telegram_client.chat_id = chat_id
-        telegram_client.base_url = f"https://api.telegram.org/bot{bot_token}"
+        if bot_token:
+            telegram_client.bot_token = bot_token
+            telegram_client.base_url = f"https://api.telegram.org/bot{bot_token}"
+        if chat_id:
+            telegram_client.chat_id = chat_id
         
         # Test connection
         success, message = await telegram_client.test_connection()
