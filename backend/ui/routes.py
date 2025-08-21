@@ -41,6 +41,47 @@ def get_current_user_optional(request: Request, db: Session = Depends(get_db)) -
         return None
 
 
+@router.get("/api/ui/dashboard/stream")
+async def dashboard_stream(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional)
+):
+    """Server-sent events endpoint for real-time dashboard updates."""
+    if not current_user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    from fastapi.responses import StreamingResponse
+    import json
+    import asyncio
+    
+    async def event_stream():
+        while True:
+            try:
+                # Gather current statistics
+                total_servers = db.query(func.count(Server.id)).scalar() or 0
+                online_servers = db.query(func.count(Server.id)).filter(Server.status == ServerStatus.ok).scalar() or 0
+                total_domains = db.query(func.count(Domain.id)).scalar() or 0
+                ssl_domains = db.query(func.count(Domain.id)).filter(Domain.ssl_enabled == True).scalar() or 0
+                unresolved_alerts = db.query(func.count(Alert.id)).filter(Alert.resolved_at.is_(None)).scalar() or 0
+                
+                stats = {
+                    "total_servers": total_servers,
+                    "online_servers": online_servers,
+                    "total_domains": total_domains,
+                    "ssl_domains": ssl_domains,
+                    "unresolved_alerts": unresolved_alerts
+                }
+                
+                yield f"data: {json.dumps(stats)}\n\n"
+                await asyncio.sleep(5)  # Update every 5 seconds
+            except Exception as e:
+                logger.error(f"Dashboard stream error: {e}")
+                break
+    
+    return StreamingResponse(event_stream(), media_type="text/plain")
+
+
 @router.get("/", response_class=HTMLResponse)
 async def index(
     request: Request,
