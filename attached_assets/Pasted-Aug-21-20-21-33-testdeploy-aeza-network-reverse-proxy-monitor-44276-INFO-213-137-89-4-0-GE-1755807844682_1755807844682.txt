@@ -1,0 +1,12 @@
+Aug 21 20:21:33 testdeploy.aeza.network reverse-proxy-monitor[44276]: INFO:     213.137.89.4:0 - "GET /api/ui/dashboard/stats HTTP/1.0" 200 OK
+Aug 21 20:21:33 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:21:33,457 - backend.ui.routes - INFO - Cookie access_token: True
+Aug 21 20:21:33 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:21:33,458 - backend.ui.routes - INFO - Token verified, username: admin
+Aug 21 20:22:03 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:22:03,458 - backend.ui.routes - ERROR - Error in get_current_user_optional: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00 (Background on this error at: https://sqlalche.me/e/20/3o7r)
+Aug 21 20:22:03 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:22:03,461 - backend.ui.routes - INFO - Cookie access_token: True
+Aug 21 20:22:03 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:22:03,462 - backend.ui.routes - INFO - Token verified, username: admin
+Aug 21 20:22:33 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:22:33,463 - backend.ui.routes - ERROR - Error in get_current_user_optional: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00 (Background on this error at: https://sqlalche.me/e/20/3o7r)
+Aug 21 20:22:33 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:22:33,464 - backend.ui.routes - INFO - Cookie access_token: True
+Aug 21 20:22:33 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:22:33,465 - backend.ui.routes - INFO - Token verified, username: admin
+Aug 21 20:23:03 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:23:03,466 - backend.ui.routes - ERROR - Error in get_current_user_optional: QueuePool limit of size 5 overflow 10 reached, connection timed out, timeout 30.00 (Background on this error at: https://sqlalche.me/e/20/3o7r)
+Aug 21 20:23:03 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:23:03,468 - backend.ui.routes - INFO - Cookie access_token: True
+Aug 21 20:23:03 testdeploy.aeza.network reverse-proxy-monitor[44276]: 2025-08-21 20:23:03,468 - backend.ui.routes - INFO - Token verified, username: admin
