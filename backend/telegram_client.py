@@ -12,6 +12,30 @@ from backend.models import Alert
 logger = logging.getLogger(__name__)
 
 
+def mask_domain(domain: str) -> str:
+    """Mask part of domain with asterisks for privacy."""
+    if not domain or len(domain) <= 8:
+        return "*" * len(domain)
+    
+    # Show first 3 and last 4 characters, mask the middle
+    if "." in domain:
+        # Split by last dot to preserve TLD
+        parts = domain.rsplit(".", 1)
+        if len(parts) == 2:
+            name_part, tld_part = parts
+            if len(name_part) <= 4:
+                # Short domain, just mask the name part
+                masked_name = name_part[0] + "*" * (len(name_part) - 1)
+                return f"{masked_name}.{tld_part}"
+            else:
+                # Normal domain, show first 2 and last 2 of name part
+                masked_name = name_part[:2] + "*" * (len(name_part) - 4) + name_part[-2:]
+                return f"{masked_name}.{tld_part}"
+    
+    # No dot, just mask middle part
+    return domain[:3] + "*" * (len(domain) - 7) + domain[-4:]
+
+
 class TelegramClient:
     """Client for sending messages via Telegram Bot API."""
     
@@ -41,12 +65,12 @@ class TelegramClient:
                         if not self.bot_token:
                             bot_token_setting = db.query(Setting).filter(Setting.key == "telegram.bot_token").first()
                             if bot_token_setting and bot_token_setting.value:
-                                self.bot_token = decrypt_if_needed(bot_token_setting.value)
+                                self.bot_token = str(decrypt_if_needed(bot_token_setting.value))
                         
                         if not self.chat_id:
                             chat_id_setting = db.query(Setting).filter(Setting.key == "telegram.chat_id").first()
                             if chat_id_setting and chat_id_setting.value:
-                                self.chat_id = decrypt_if_needed(chat_id_setting.value)
+                                self.chat_id = str(decrypt_if_needed(chat_id_setting.value))
                 except Exception as db_error:
                     logger.warning(f"Failed to load Telegram settings from database: {db_error}")
             
@@ -132,7 +156,7 @@ class TelegramClient:
     async def send_server_down_alert(self, server_name: str, server_host: str, failure_count: int) -> bool:
         """Send server down alert."""
         message = f"🚨 *Server Down Alert*\n\n"
-        message += f"Server *{server_name}* ({server_host}) is unreachable.\n"
+        message += f"Server *{server_name}* is unreachable.\n"
         message += f"Failed {failure_count} consecutive health checks.\n\n"
         message += f"Please check the server status immediately."
         
@@ -141,15 +165,16 @@ class TelegramClient:
     async def send_server_recovered_alert(self, server_name: str, server_host: str) -> bool:
         """Send server recovery alert."""
         message = f"✅ *Server Recovered*\n\n"
-        message += f"Server *{server_name}* ({server_host}) is now responding.\n"
+        message += f"Server *{server_name}* is now responding.\n"
         message += f"Service has been restored."
         
         return await self.send_message(message)
     
     async def send_ssl_error_alert(self, domain: str, error: str) -> bool:
         """Send SSL certificate error alert."""
+        masked_domain = mask_domain(domain)
         message = f"🔒 *SSL Certificate Error*\n\n"
-        message += f"Domain: *{domain}*\n"
+        message += f"Domain: *{masked_domain}*\n"
         message += f"Error: {error}\n\n"
         message += f"Please check the SSL certificate configuration."
         
@@ -157,8 +182,14 @@ class TelegramClient:
     
     async def send_deployment_error_alert(self, target: str, error: str) -> bool:
         """Send deployment error alert."""
+        # Mask target if it looks like a domain
+        if "." in target and not target.startswith("http"):
+            masked_target = mask_domain(target)
+        else:
+            masked_target = target
+            
         message = f"⚙️ *Deployment Error*\n\n"
-        message += f"Target: *{target}*\n"
+        message += f"Target: *{masked_target}*\n"
         message += f"Error: {error}\n\n"
         message += f"Please check the deployment logs."
         

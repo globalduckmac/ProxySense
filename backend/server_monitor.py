@@ -13,7 +13,7 @@ from backend.config import settings
 from backend.database import get_database_url
 from backend.models import Server, ServerStatus, Alert, AlertLevel
 from backend.glances_client import GlancesClient
-from backend.telegram_client import TelegramClient
+from backend.telegram_client import TelegramClient, mask_domain
 
 logger = logging.getLogger(__name__)
 
@@ -240,7 +240,7 @@ class ServerMonitorService:
         alert = Alert(
             level=AlertLevel.WARNING,
             title=f"{emoji} High {resource_type.upper()} usage on {server.name}",
-            message=f"Server {server.name} ({server.host}) has high {resource_type} usage: {current_value:.1f}% (threshold: {threshold}%)",
+            message=f"Server {server.name} has high {resource_type} usage: {current_value:.1f}% (threshold: {threshold}%)",
             alert_type=f"{resource_type}_high",
             server_id=server.id
         )
@@ -265,7 +265,7 @@ class ServerMonitorService:
         alert = Alert(
             level=AlertLevel.INFO,
             title=f"✅ Server {server.name} recovered",
-            message=f"Server {server.name} ({server.host}) has recovered: {message}",
+            message=f"Server {server.name} has recovered: {message}",
             alert_type="server_recovered",
             server_id=server.id
         )
@@ -291,7 +291,7 @@ class ServerMonitorService:
             alert = Alert(
                 level=AlertLevel.ERROR,
                 title=f"🚨 Server {server.name} is unreachable",
-                message=f"Server {server.name} ({server.host}) is unreachable after {failure_count} consecutive failures. Error: {error}",
+                message=f"Server {server.name} is unreachable after {failure_count} consecutive failures. Error: {error}",
                 alert_type="server_unreachable",
                 server_id=server.id
             )

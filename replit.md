@@ -8,6 +8,30 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes (August 2025)
 
+## Privacy-Enhanced Telegram Alerts
+- **Date**: August 21, 2025
+- **Change**: Enhanced Telegram notifications to protect sensitive information
+- **Privacy Features**:
+  - **Server Alerts**: Removed IP addresses from all server-related Telegram notifications, showing only server names
+  - **Domain Masking**: Implemented intelligent domain masking for privacy protection
+  - **Smart Masking Algorithm**: Shows first 2 and last 2 characters of domain name with asterisks in between (e.g., `foxlume.shop` → `fo***me.shop`, `web3gogame.shop` → `we******me.shop`)
+  - **Deployment Privacy**: Masked domain names in deployment error alerts
+  - **SSL Alert Privacy**: Masked domain names in SSL certificate alerts
+- **Implementation**: Updated `backend/telegram_client.py`, `backend/server_monitor.py`, and `backend/ns_monitor.py` with new `mask_domain()` function
+- **Result**: All Telegram alerts now protect sensitive server and domain information while maintaining alerting functionality
+
+## Server Deletion Protection Fix
+- **Date**: August 21, 2025
+- **Change**: Fixed server deletion errors by adding domain dependency checking
+- **Issue**: Server deletion failed with foreign key constraint violations when servers had deployed domains
+- **Solution**: Added pre-deletion validation to check for linked domains and related database records
+- **Safety Features**:
+  - **Domain Dependency Check**: Prevents deletion of servers with active domain deployments
+  - **Clear Error Messages**: Shows user exactly how many domains are blocking deletion
+  - **Cascade Cleanup**: Properly handles cleanup of related records (alerts, tasks, logs) when deletion is allowed
+- **Implementation**: Enhanced server deletion endpoint with comprehensive foreign key constraint handling
+- **Result**: Server deletion now provides clear guidance and prevents data integrity issues
+
 ## Glances API Version Global Fix
 - **Date**: August 21, 2025
 - **Change**: Fixed Glances API version inconsistency across entire system

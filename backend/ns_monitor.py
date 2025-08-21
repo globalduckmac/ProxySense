@@ -12,7 +12,7 @@ from backend.config import settings
 from backend.database import get_database_url
 from backend.models import Domain, NSCheck, Alert, AlertLevel
 from backend.dns_utils import check_domain_ns
-from backend.telegram_client import TelegramClient
+from backend.telegram_client import TelegramClient, mask_domain
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +132,7 @@ class NSMonitorService:
             domain.last_ns_check_at = datetime.utcnow()
             
             # Check for NS alerts
-            await self._check_ns_alerts(db, domain, False, [], str(e))
+            await self._check_ns_alerts(db, domain, False, [], str(e) if e else "")
     
     async def _check_ns_alerts(self, db: Session, domain: Domain, is_valid: bool, ns_servers: List[str], error: str):
         """Check and create NS alerts for a domain."""
@@ -153,10 +153,11 @@ class NSMonitorService:
         """Create a NS check failed alert."""
         ns_info = f"NS servers: {', '.join(ns_servers)}" if ns_servers else "No NS servers found"
         
+        masked_domain = mask_domain(domain.domain)
         alert = Alert(
             level=AlertLevel.WARNING,
-            title=f"🔍 NS check failed for {domain.domain}",
-            message=f"Domain {domain.domain} failed NS policy check '{domain.ns_policy}'. {ns_info}. Error: {error or 'Policy mismatch'}",
+            title=f"🔍 NS check failed for {masked_domain}",
+            message=f"Domain {masked_domain} failed NS policy check '{domain.ns_policy}'. {ns_info}. Error: {error or 'Policy mismatch'}",
             alert_type="ns_check_failed",
             domain_id=domain.id
         )
@@ -180,10 +181,11 @@ class NSMonitorService:
         """Create a NS recovery alert."""
         ns_info = f"NS servers: {', '.join(ns_servers)}" if ns_servers else "NS resolved"
         
+        masked_domain = mask_domain(domain.domain)
         alert = Alert(
             level=AlertLevel.INFO,
-            title=f"✅ NS recovered for {domain.domain}",
-            message=f"Domain {domain.domain} NS policy '{domain.ns_policy}' is now valid. {ns_info}",
+            title=f"✅ NS recovered for {masked_domain}",
+            message=f"Domain {masked_domain} NS policy '{domain.ns_policy}' is now valid. {ns_info}",
             alert_type="ns_recovered",
             domain_id=domain.id
         )
@@ -205,10 +207,11 @@ class NSMonitorService:
     
     async def _create_ns_error_alert(self, db: Session, domain: Domain, error: str):
         """Create a NS check error alert."""
+        masked_domain = mask_domain(domain.domain)
         alert = Alert(
             level=AlertLevel.ERROR,
-            title=f"❌ NS check error for {domain.domain}",
-            message=f"Failed to check NS records for domain {domain.domain}. Error: {error}",
+            title=f"❌ NS check error for {masked_domain}",
+            message=f"Failed to check NS records for domain {masked_domain}. Error: {error}",
             alert_type="ns_check_error",
             domain_id=domain.id
         )
