@@ -332,11 +332,12 @@ After=network.target postgresql.service
 Wants=postgresql.service
 
 [Service]
-Type=exec
+Type=simple
 User=$APP_USER
 Group=$APP_USER
 WorkingDirectory=$INSTALL_DIR
-Environment=PATH=$INSTALL_DIR/venv/bin
+Environment="PATH=$INSTALL_DIR/venv/bin:/usr/bin:/bin"
+Environment="PYTHONPATH=$INSTALL_DIR"
 ExecStart=$INSTALL_DIR/venv/bin/python main.py
 Restart=always
 RestartSec=3
