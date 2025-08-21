@@ -513,29 +513,118 @@ function openSimpleProgressModal(taskId, taskName, actionName) {
     const logs = document.getElementById('task-logs');
     
     if (title) title.textContent = taskName || 'Task Progress';
-    if (progress) progress.style.width = '20%';
-    if (status) status.textContent = 'Running...';
-    if (logs) logs.innerHTML = '<div class="log-entry">Task started...</div>';
+    if (progress) progress.style.width = '0%';
+    if (status) status.textContent = 'Starting...';
+    if (logs) logs.innerHTML = '<div class="log-entry"><span class="log-time">[' + new Date().toLocaleTimeString() + ']</span> <span class="log-level">INFO</span>: Task started...</div>';
     
     modal.style.display = 'flex';
     
-    // Simulate progress and check result after 3 seconds
-    setTimeout(() => {
-        if (progress) progress.style.width = '60%';
-        if (status) status.textContent = 'Processing...';
-        if (logs) logs.innerHTML += '<div class="log-entry">Connecting to server...</div>';
-    }, 1000);
+    // Start real-time log streaming
+    startTaskLogStreaming(taskId, logs, progress, status);
+}
+
+function startTaskLogStreaming(taskId, logsContainer, progressBar, statusElement) {
+    const eventSource = new EventSource(`/api/tasks/${taskId}/stream`);
+    let isCompleted = false;
     
+    eventSource.onmessage = function(event) {
+        try {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'status') {
+                // Update progress and status
+                if (progressBar) progressBar.style.width = `${data.progress || 0}%`;
+                if (statusElement) {
+                    const statusMap = {
+                        'PENDING': 'Pending...',
+                        'RUNNING': 'Running...',
+                        'COMPLETED': 'Completed ✓',
+                        'FAILED': 'Failed ✗'
+                    };
+                    statusElement.textContent = statusMap[data.status] || data.status;
+                }
+                
+                // Check if completed
+                if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+                    isCompleted = true;
+                    eventSource.close();
+                    
+                    // Auto close after 3 seconds
+                    setTimeout(() => {
+                        const modal = document.getElementById('task-modal');
+                        if (modal) modal.style.display = 'none';
+                        
+                        if (data.status === 'COMPLETED') {
+                            showNotification('Task completed successfully', 'success');
+                        } else {
+                            showNotification('Task failed: ' + (data.error_message || 'Unknown error'), 'error');
+                        }
+                    }, 3000);
+                }
+            } else if (data.type === 'error') {
+                isCompleted = true;
+                eventSource.close();
+                if (logsContainer) {
+                    const errorEntry = document.createElement('div');
+                    errorEntry.className = 'log-entry error';
+                    errorEntry.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> <span class="log-level">ERROR</span>: ${data.message}`;
+                    logsContainer.appendChild(errorEntry);
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+            } else {
+                // Add log entry
+                if (logsContainer && data.message) {
+                    const logEntry = document.createElement('div');
+                    logEntry.className = `log-entry ${data.level ? data.level.toLowerCase() : ''}`;
+                    
+                    const timestamp = data.timestamp ? new Date(data.timestamp).toLocaleTimeString() : new Date().toLocaleTimeString();
+                    logEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-level">${data.level || 'INFO'}</span>: ${data.message}`;
+                    
+                    logsContainer.appendChild(logEntry);
+                    
+                    // Add stdout/stderr if available
+                    if (data.stdout) {
+                        const stdoutEntry = document.createElement('div');
+                        stdoutEntry.className = 'log-entry stdout';
+                        stdoutEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-level">STDOUT</span>: <pre>${data.stdout}</pre>`;
+                        logsContainer.appendChild(stdoutEntry);
+                    }
+                    
+                    if (data.stderr) {
+                        const stderrEntry = document.createElement('div');
+                        stderrEntry.className = 'log-entry stderr';
+                        stderrEntry.innerHTML = `<span class="log-time">[${timestamp}]</span> <span class="log-level">STDERR</span>: <pre>${data.stderr}</pre>`;
+                        logsContainer.appendChild(stderrEntry);
+                    }
+                    
+                    logsContainer.scrollTop = logsContainer.scrollHeight;
+                }
+            }
+        } catch (e) {
+            console.error('Error parsing task log data:', e);
+        }
+    };
+    
+    eventSource.onerror = function(event) {
+        console.error('Task log stream error:', event);
+        if (!isCompleted) {
+            eventSource.close();
+            if (logsContainer) {
+                const errorEntry = document.createElement('div');
+                errorEntry.className = 'log-entry error';
+                errorEntry.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> <span class="log-level">ERROR</span>: Connection to log stream lost`;
+                logsContainer.appendChild(errorEntry);
+                logsContainer.scrollTop = logsContainer.scrollHeight;
+            }
+        }
+    };
+    
+    // Cleanup after 60 seconds max
     setTimeout(() => {
-        if (progress) progress.style.width = '100%';
-        if (status) status.textContent = 'Completed ✓';
-        if (logs) logs.innerHTML += '<div class="log-entry">Task completed successfully!</div>';
-        
-        setTimeout(() => {
-            modal.style.display = 'none';
-            showNotification(`${actionName} completed successfully`, 'success');
-        }, 1500);
-    }, 3000);
+        if (!isCompleted) {
+            eventSource.close();
+        }
+    }, 60000);
 }
 
 function deleteServer(serverId) {
