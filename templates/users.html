@@ -1,27 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>User Management - Reverse Proxy & Monitor</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-    <style>
+{% extends "base.html" %}
+
+{% block title %}Users - Reverse Proxy & Monitor{% endblock %}
+{% block page_title %}👥 User Management{% endblock %}
+
+{% block page_actions %}
+<div id="admin-controls" style="display: none;">
+    <button class="btn btn-primary" onclick="showCreateUserModal()">
+        <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+        </svg>
+        Add User
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
         .user-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            border-left: 4px solid #4CAF50;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 16px;
+            transition: all 0.2s ease;
+            border-left: 4px solid var(--success-color);
+        }
+
+        .user-card:hover {
+            box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+            transform: translateY(-2px);
         }
 
         .user-card.inactive {
-            border-left-color: #f44336;
+            border-left-color: var(--danger-color);
             opacity: 0.7;
         }
 
         .user-card.admin {
-            border-left-color: #2196F3;
+            border-left-color: var(--primary-color);
         }
 
         .user-header {
@@ -45,36 +61,57 @@
         }
 
         .role-badge {
-            background: #e3f2fd;
-            color: #1976d2;
-            padding: 2px 8px;
-            border-radius: 12px;
+            background: rgba(var(--primary-rgb), 0.1);
+            color: var(--primary-color);
+            padding: 4px 12px;
+            border-radius: 20px;
             font-size: 12px;
-            font-weight: normal;
+            font-weight: 500;
         }
 
         .role-badge.admin {
-            background: #e8f5e8;
-            color: #2e7d32;
+            background: rgba(var(--success-rgb), 0.1);
+            color: var(--success-color);
         }
 
         .status-badge {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 2px 8px;
-            border-radius: 12px;
+            background: rgba(var(--success-rgb), 0.1);
+            color: var(--success-color);
+            padding: 4px 12px;
+            border-radius: 20px;
             font-size: 12px;
+            font-weight: 500;
         }
 
         .status-badge.inactive {
-            background: #ffebee;
-            color: #c62828;
+            background: rgba(var(--danger-rgb), 0.1);
+            color: var(--danger-color);
         }
 
         .user-meta {
-            color: #666;
+            color: var(--text-secondary);
             font-size: 14px;
-            margin-top: 10px;
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .meta-item svg {
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+        .users-grid {
+            display: grid;
+            gap: 16px;
         }
 
         .user-actions {
@@ -83,35 +120,47 @@
         }
 
         .action-btn {
-            padding: 6px 12px;
+            padding: 8px 16px;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 13px;
+            font-weight: 500;
             text-decoration: none;
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
         }
 
         .btn-password {
-            background: #2196F3;
+            background: var(--primary-color);
             color: white;
+        }
+
+        .btn-password:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
         }
 
         .btn-toggle {
-            background: #ff9800;
+            background: var(--warning-color);
             color: white;
+        }
+
+        .btn-toggle:hover {
+            background: var(--warning-hover);
+            transform: translateY(-1px);
         }
 
         .btn-delete {
-            background: #f44336;
+            background: var(--danger-color);
             color: white;
         }
 
-        .btn-create {
-            background: #4CAF50;
-            color: white;
-            padding: 10px 20px;
-            margin-bottom: 20px;
+        .btn-delete:hover {
+            background: var(--danger-hover);
+            transform: translateY(-1px);
         }
 
         .modal {
@@ -159,60 +208,43 @@
         }
 
         .alert {
-            padding: 15px;
+            padding: 16px;
             margin-bottom: 20px;
-            border-radius: 4px;
+            border-radius: 8px;
+            border: 1px solid;
+            font-weight: 500;
         }
 
         .alert-success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
+            background: rgba(var(--success-rgb), 0.1);
+            color: var(--success-color);
+            border-color: var(--success-color);
         }
 
         .alert-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
+            background: rgba(var(--danger-rgb), 0.1);
+            color: var(--danger-color);
+            border-color: var(--danger-color);
         }
     </style>
-</head>
-<body>
-    <div class="header">
-        <div class="header-content">
-            <div class="header-title">
-                <h1>👥 User Management</h1>
-            </div>
-            <nav class="nav">
-                <a href="/">🏠 Dashboard</a>
-                <a href="/servers">🖥️ Servers</a>
-                <a href="/domains">🌐 Domains</a>
-                <a href="/users" class="active">👥 Users</a>
-                <a href="/settings">⚙️ Settings</a>
-            </nav>
-        </div>
+{% endblock %}
+
+{% block content %}
+<div class="users-page">
+    <!-- Alert Messages -->
+    <div id="alerts"></div>
+
+    <!-- Users Grid -->
+    <div id="users-container" class="users-grid">
+        <!-- Users will be loaded here -->
     </div>
-
-    <div class="container">
-        <!-- Alert Messages -->
-        <div id="alerts"></div>
-
-        <!-- Create User Button (Admin Only) -->
-        <div id="admin-controls" style="display: none;">
-            <button class="action-btn btn-create" onclick="showCreateUserModal()">+ Create New User</button>
-        </div>
-
-        <!-- Users List -->
-        <div id="users-container">
-            <!-- Users will be loaded here -->
-        </div>
-    </div>
+</div>
 
     <!-- Create User Modal -->
     <div id="createUserModal" class="modal">
         <div class="modal-content">
             <h3>Create New User</h3>
-            <form id="createUserForm" action="/api/users/ui/create" method="POST">
+            <form id="createUserForm">
                 <div class="form-group">
                     <label for="username">Username:</label>
                     <input type="text" id="username" name="username" required>
@@ -303,9 +335,9 @@
                     users = data;
                     renderUsers();
                     
-                    // Check if current user is admin
-                    const adminUser = users.find(u => u.role === 'admin');
-                    if (adminUser && users.length > 1) {
+                    // Check if current user is admin  
+                    const currentUserIsAdmin = users.some(u => u.role === 'admin');
+                    if (currentUserIsAdmin) {
                         document.getElementById('admin-controls').style.display = 'block';
                     }
                 } else {
@@ -321,7 +353,7 @@
             const container = document.getElementById('users-container');
             
             if (users.length === 0) {
-                container.innerHTML = '<p>No users found.</p>';
+                container.innerHTML = '<div class="empty-state"><p>No users found.</p></div>';
                 return;
             }
 
@@ -330,31 +362,60 @@
                     <div class="user-header">
                         <div class="user-info">
                             <div class="user-name">
+                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 20px; height: 20px; margin-right: 8px;">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
                                 ${user.username}
-                                <span class="role-badge ${user.role}">${user.role}</span>
+                                <span class="role-badge ${user.role}">${user.role.toUpperCase()}</span>
                                 <span class="status-badge ${!user.is_active ? 'inactive' : ''}">${user.is_active ? 'Active' : 'Inactive'}</span>
                             </div>
                             <div class="user-meta">
-                                ${user.email ? `📧 ${user.email}` : '📧 No email'}
-                                <br>
-                                📅 Created: ${new Date(user.created_at).toLocaleDateString()}
-                                ${user.last_login_at ? `<br>🕐 Last login: ${new Date(user.last_login_at).toLocaleDateString()}` : ''}
+                                <div class="meta-item">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                        <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                                    </svg>
+                                    ${user.email || 'No email'}
+                                </div>
+                                <div class="meta-item">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                        <path d="M9 11H7v6h2v-6zm4 0h-2v6h2v-6zm4 0h-2v6h2v-6zm2.5-9H20v2h-3.5l-1-1h-5l-1 1H5V2h3.5l1 1h5l1-1H19V2z"/>
+                                    </svg>
+                                    Created: ${new Date(user.created_at).toLocaleDateString()}
+                                </div>
+                                ${user.last_login_at ? `
+                                    <div class="meta-item">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                            <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/>
+                                            <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                                        </svg>
+                                        Last login: ${new Date(user.last_login_at).toLocaleDateString()}
+                                    </div>
+                                ` : ''}
                             </div>
                         </div>
                         <div class="user-actions">
                             <button class="action-btn btn-password" onclick="showPasswordModal(${user.id}, '${user.username}')">
-                                🔑 Change Password
+                                <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                                </svg>
+                                Change Password
                             </button>
                             ${user.role !== 'admin' ? `
-                                <form style="display: inline;" action="/api/users/ui/${user.id}/toggle" method="POST">
-                                    <button type="submit" class="action-btn btn-toggle">
-                                        ${user.is_active ? '🔒 Deactivate' : '🔓 Activate'}
-                                    </button>
-                                </form>
-                                <form style="display: inline;" action="/api/users/ui/${user.id}/delete" method="POST" 
-                                      onsubmit="return confirm('Are you sure you want to delete user ${user.username}?')">
-                                    <button type="submit" class="action-btn btn-delete">🗑️ Delete</button>
-                                </form>
+                                <button class="action-btn btn-toggle" onclick="toggleUserStatus(${user.id}, ${user.is_active})">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                        ${user.is_active ? 
+                                            '<path d="M18 10v-4c0-3.313-2.687-6-6-6s-6 2.687-6 6v4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2zM8.9 10V6c0-1.71 1.39-3.1 3.1-3.1s3.1 1.39 3.1 3.1v4H8.9z"/>' :
+                                            '<path d="M18 10h-1.26A8 8 0 1 0 9 20h9a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2z"/>'
+                                        }
+                                    </svg>
+                                    ${user.is_active ? 'Deactivate' : 'Activate'}
+                                </button>
+                                <button class="action-btn btn-delete" onclick="deleteUser(${user.id}, '${user.username}')">
+                                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                        <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                    </svg>
+                                    Delete
+                                </button>
                             ` : ''}
                         </div>
                     </div>
@@ -429,6 +490,84 @@
             const alertsContainer = document.getElementById('alerts');
             alertsContainer.innerHTML = `<div class="alert alert-error">${message}</div>`;
         }
+        async function toggleUserStatus(userId, currentStatus) {
+            try {
+                const response = await fetch(`/api/users/${userId}/status`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_active: !currentStatus })
+                });
+                
+                if (response.ok) {
+                    await loadUsers(); // Reload users
+                    showSuccess(`User ${!currentStatus ? 'activated' : 'deactivated'} successfully`);
+                } else {
+                    const error = await response.json();
+                    showError(error.detail || 'Failed to update user status');
+                }
+            } catch (error) {
+                showError('Failed to update user status');
+            }
+        }
+        
+        async function deleteUser(userId, username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    await loadUsers(); // Reload users
+                    showSuccess(`User "${username}" deleted successfully`);
+                } else {
+                    const error = await response.json();
+                    showError(error.detail || 'Failed to delete user');
+                }
+            } catch (error) {
+                showError('Failed to delete user');
+            }
+        }
+        
+        async function createUser(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            
+            try {
+                const response = await fetch('/api/users/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: formData.get('username'),
+                        email: formData.get('email'),
+                        password: formData.get('password'),
+                        role: formData.get('role')
+                    })
+                });
+                
+                if (response.ok) {
+                    hideCreateUserModal();
+                    await loadUsers(); // Reload users
+                    showSuccess('User created successfully');
+                } else {
+                    const error = await response.json();
+                    showError(error.detail || 'Failed to create user');
+                }
+            } catch (error) {
+                showError('Failed to create user');
+            }
+        }
+        
+        function showSuccess(message) {
+            const alertsContainer = document.getElementById('alerts');
+            alertsContainer.innerHTML = `<div class="alert alert-success">${message}</div>`;
+            setTimeout(() => alertsContainer.innerHTML = '', 5000);
+        }
+
+        // Add form submit handler
+        document.getElementById('createUserForm').addEventListener('submit', createUser);
     </script>
-</body>
-</html>
+{% endblock %}
