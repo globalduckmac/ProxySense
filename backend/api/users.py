@@ -140,10 +140,13 @@ async def update_user_password(
     
     return {"message": "Password updated successfully"}
 
+class UpdateStatusRequest(BaseModel):
+    is_active: bool
+
 @router.put("/{user_id}/status")
 async def update_user_status(
     user_id: int,
-    is_active: bool,
+    status_request: UpdateStatusRequest,
     request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user_from_cookie)
@@ -159,10 +162,10 @@ async def update_user_status(
     if user.id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot deactivate your own account")
     
-    user.is_active = is_active
+    user.is_active = status_request.is_active
     db.commit()
     
-    action = "activated" if is_active else "deactivated"
+    action = "activated" if status_request.is_active else "deactivated"
     logger.info(f"User {user.username} {action} by admin {current_user.username}")
     
     return {"message": f"User {action} successfully"}
@@ -211,7 +214,7 @@ async def create_user_ui(
             email=email if email else None,
             role=role
         )
-        await create_user(create_request, db, current_user)
+        await create_user(create_request, request, db, current_user)
         return RedirectResponse(url="/users?success=User created successfully", status_code=303)
     except HTTPException as e:
         return RedirectResponse(url=f"/users?error={e.detail}", status_code=303)
@@ -234,7 +237,7 @@ async def update_password_ui(
             current_password=current_password if current_password else None,
             new_password=new_password
         )
-        await update_user_password(user_id, update_request, db, current_user)
+        await update_user_password(user_id, update_request, request, db, current_user)
         return RedirectResponse(url="/users?success=Password updated successfully", status_code=303)
     except HTTPException as e:
         return RedirectResponse(url=f"/users?error={e.detail}", status_code=303)
@@ -256,7 +259,8 @@ async def toggle_user_status_ui(
             return RedirectResponse(url="/users?error=User not found", status_code=303)
         
         new_status = not user.is_active
-        await update_user_status(user_id, new_status, db, current_user)
+        status_request = UpdateStatusRequest(is_active=new_status)
+        await update_user_status(user_id, status_request, request, db, current_user)
         action = "activated" if new_status else "deactivated"
         return RedirectResponse(url=f"/users?success=User {action} successfully", status_code=303)
     except HTTPException as e:
@@ -274,7 +278,7 @@ async def delete_user_ui(
 ):
     """Delete user via web form."""
     try:
-        await delete_user(user_id, db, current_user)
+        await delete_user(user_id, request, db, current_user)
         return RedirectResponse(url="/users?success=User deleted successfully", status_code=303)
     except HTTPException as e:
         return RedirectResponse(url=f"/users?error={e.detail}", status_code=303)
