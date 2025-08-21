@@ -243,12 +243,19 @@ async def delete_server(
 
 @router.post("/{server_id}/check-ssh", response_model=TaskResponse)
 async def check_ssh_access(
+    request: Request,
     server_id: int,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Check SSH access to a server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
         raise HTTPException(
@@ -276,12 +283,19 @@ async def check_ssh_access(
 
 @router.post("/{server_id}/deploy-proxy", response_model=TaskResponse)
 async def deploy_proxy(
+    request: Request,
     server_id: int,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Deploy Nginx reverse proxy on a server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
         raise HTTPException(
@@ -309,12 +323,19 @@ async def deploy_proxy(
 
 @router.post("/{server_id}/install-glances", response_model=TaskResponse)
 async def install_glances(
+    request: Request,
     server_id: int,
     background_tasks: BackgroundTasks,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    db: Session = Depends(get_db)
 ):
     """Install Glances monitoring on a server."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
     server = db.query(Server).filter(Server.id == server_id).first()
     if not server:
         raise HTTPException(

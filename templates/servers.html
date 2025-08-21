@@ -361,8 +361,9 @@ function performServerAction(serverId, action, actionName) {
     fetch(`/api/servers/${serverId}/${action}`, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${getAuthToken()}`
-        }
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include'
     })
     .then(response => response.json())
     .then(data => {
@@ -387,8 +388,9 @@ function probeGlances(serverId) {
     fetch(`/api/servers/${serverId}/probe-glances`, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${getAuthToken()}`
-        }
+            'Content-Type': 'application/json'
+        },
+        credentials: 'include'
     })
     .then(response => response.json())
     .then(data => {
