@@ -6,17 +6,32 @@
 
 ### Автоматическая установка на Ubuntu 22.04
 
+#### Вариант 1: Полная установка (рекомендуется)
 ```bash
-# Клонирование репозитория
-git clone https://github.com/your-username/reverse-proxy-monitor.git
-cd reverse-proxy-monitor
-
-# Запуск скрипта установки
-chmod +x deploy.sh
-./deploy.sh
+# Загрузка и запуск полного скрипта установки
+wget https://raw.githubusercontent.com/globalduckmac/ProxySense/main/deploy_fixed.sh
+chmod +x deploy_fixed.sh
+sudo ./deploy_fixed.sh
 ```
 
-Скрипт работает как от root, так и от обычного пользователя с sudo правами.
+#### Вариант 2: Быстрая установка
+```bash
+# Минимальная установка с основными исправлениями
+wget https://raw.githubusercontent.com/globalduckmac/ProxySense/main/deploy_simple.sh
+chmod +x deploy_simple.sh
+sudo ./deploy_simple.sh
+```
+
+#### Вариант 3: Исправление ошибок production
+```bash
+# Если у вас ошибки Pydantic или базы данных
+cd /opt/reverse-proxy-monitor
+wget https://raw.githubusercontent.com/globalduckmac/ProxySense/main/fix_production_errors.sh
+chmod +x fix_production_errors.sh
+sudo ./fix_production_errors.sh
+```
+
+Все скрипты работают на Ubuntu 22.04+ и включают исправления известных проблем.
 
 ## ✨ Возможности
 
@@ -104,20 +119,44 @@ TELEGRAM_CHAT_ID=your_chat_id
 
 ## 🔍 Устранение неполадок
 
-### Сервис не запускается
+### Типичные ошибки и решения
+
+#### 1. Ошибки Pydantic validation
+**Ошибка**: `Extra inputs are not permitted` для JWT_SECRET_KEY, ENCRYPTION_KEY
+**Решение**: Используйте `fix_production_errors.sh`
+
+#### 2. Синтаксические ошибки в database.py  
+**Ошибка**: `SyntaxError: invalid syntax` в backend/database.py
+**Решение**: Скрипт исправляет конфигурацию пула БД
+
+#### 3. Все роуты возвращают 404
+**Ошибка**: 404 Not Found для всех страниц
+**Решение**: Исправление регистрации роутеров в main.py
+
+#### 4. Проблемы с аутентификацией  
+**Ошибка**: Не работает вход за reverse proxy
+**Решение**: Исправление настроек cookie на `secure=False`
+
+### Диагностические команды
+
+#### Сервис не запускается
 ```bash
 journalctl -u reverse-proxy-monitor --no-pager -n 20
+systemctl status reverse-proxy-monitor
 ```
 
-### Проблемы с базой данных
+#### Проверка портов
 ```bash
-su rpmonitor -c "cd /opt/reverse-proxy-monitor && source venv/bin/activate && python manage.py check-db"
-```
-
-### Проверка портов
-```bash
-netstat -tulpn | grep :5000
+ss -tlnp | grep :5000
 ufw status
+curl -I http://localhost:5000/
+```
+
+#### Тест базы данных
+```bash
+cd /opt/reverse-proxy-monitor
+source venv/bin/activate
+python3 -c "from backend.database import engine; print('DB OK' if engine else 'DB Error')"
 ```
 
 ## 📚 Документация

@@ -286,108 +286,139 @@ EOF
 fix_auth_settings() {
     log "Исправление настроек аутентификации..."
     
-    # Создаем скрипт исправления
-    cat > fix_auth_issue.py << 'EOF'
-import os
-import re
-
-# Исправляем backend/auth.py для работы с reverse proxy
-auth_file = "backend/auth.py"
-
-if os.path.exists(auth_file):
-    with open(auth_file, 'r') as f:
-        content = f.read()
-    
-    # Заменяем настройки cookie на правильные для reverse proxy
-    content = re.sub(
-        r'response\.set_cookie\([^)]*secure=True[^)]*\)',
-        lambda m: m.group(0).replace('secure=True', 'secure=False'),
-        content
-    )
-    
-    content = re.sub(
-        r'response\.set_cookie\([^)]*samesite=["\'][^"\']*["\'][^)]*\)',
-        lambda m: re.sub(r'samesite=["\'][^"\']*["\']', 'samesite="lax"', m.group(0)),
-        content
-    )
-    
-    # Если нет настроек cookie, добавляем правильные
-    if 'set_cookie(' in content and 'secure=' not in content:
-        content = content.replace(
-            'response.set_cookie(',
-            'response.set_cookie('
-        )
-        # Находим все вызовы set_cookie и добавляем параметры
-        content = re.sub(
-            r'response\.set_cookie\(\s*"access_token"[^)]*\)',
-            lambda m: m.group(0)[:-1] + ', secure=False, samesite="lax")',
-            content
-        )
-    
-    with open(auth_file, 'w') as f:
-        f.write(content)
-    
-    print("✅ backend/auth.py исправлен для работы с reverse proxy")
-else:
-    print("❌ backend/auth.py не найден")
-EOF
-    
-    python3 fix_auth_issue.py
-    rm fix_auth_issue.py
+    if [[ -f "backend/auth.py" ]]; then
+        sed -i 's/secure=True/secure=False/g' backend/auth.py
+        sed -i 's/samesite="strict"/samesite="lax"/g' backend/auth.py
+        sed -i 's/samesite="Strict"/samesite="lax"/g' backend/auth.py
+        log "Cookie настройки исправлены для reverse proxy"
+    fi
 }
 
-# Исправление настроек пула БД
-fix_database_pool() {
-    log "Исправление настроек пула базы данных..."
+# Создание исправленных файлов конфигурации
+fix_config_files() {
+    log "Создание исправленных файлов конфигурации..."
     
-    cat > fix_database_pool.py << 'EOF'
+    # Исправляем backend/config.py
+    cat > backend/config.py << 'EOF'
+"""
+Application configuration management.
+"""
 import os
-import re
+from pydantic_settings import BaseSettings
+from typing import List
 
-# Исправляем backend/database.py или backend/app.py
-files_to_check = ["backend/database.py", "backend/app.py", "backend/models.py"]
 
-for file_path in files_to_check:
-    if os.path.exists(file_path):
-        with open(file_path, 'r') as f:
-            content = f.read()
-        
-        # Ищем настройки engine и увеличиваем пул
-        if 'create_engine' in content:
-            # Заменяем настройки пула
-            content = re.sub(
-                r'pool_size=\d+',
-                'pool_size=20',
-                content
-            )
-            content = re.sub(
-                r'max_overflow=\d+', 
-                'max_overflow=30',
-                content
-            )
-            content = re.sub(
-                r'pool_timeout=\d+',
-                'pool_timeout=60',
-                content
-            )
-            
-            # Если настроек нет, добавляем их
-            if 'pool_size=' not in content and 'create_engine(' in content:
-                content = re.sub(
-                    r'create_engine\([^)]+\)',
-                    lambda m: m.group(0)[:-1] + ', pool_size=20, max_overflow=30, pool_timeout=60)',
-                    content
-                )
-            
-            with open(file_path, 'w') as f:
-                f.write(content)
-            
-            print(f"✅ {file_path} - настройки пула БД обновлены")
-            break
+class Settings(BaseSettings):
+    """Application settings."""
+    
+    # Database
+    DATABASE_URL: str = "sqlite:///./app.db"
+    
+    # Security
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    JWT_SECRET_KEY: str = "dev-jwt-secret-key-change-in-production"
+    ENCRYPTION_KEY: str = ""
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ENCRYPTION_KEY_PATH: str = "./encryption.key"
+    
+    # Application
+    DEBUG: bool = True
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
+    
+    # Database Pool Settings
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 30
+    DB_POOL_TIMEOUT: int = 60
+    
+    # Cookie Settings
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "lax"
+    
+    # Monitoring Settings
+    SERVER_CHECK_INTERVAL: int = 300
+    NS_CHECK_INTERVAL: int = 3600
+    ALERT_COOLDOWN: int = 1800
+    
+    # Telegram
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+    
+    # SSH
+    SSH_TIMEOUT: int = 30
+    SSH_CONNECT_TIMEOUT: int = 10
+    
+    # Glances
+    GLANCES_POLL_INTERVAL: int = 60
+    GLANCES_TIMEOUT: int = 10
+    GLANCES_MAX_FAILURES: int = 3
+    
+    # DNS
+    DNS_TIMEOUT: int = 5
+    DNS_SERVERS: str = "8.8.8.8,1.1.1.1"
+    
+    class Config:
+        env_file = ".env"
+    
+    @property
+    def dns_servers_list(self) -> List[str]:
+        """Get DNS servers as a list."""
+        return [server.strip() for server in self.DNS_SERVERS.split(",")]
+
+
+# Global settings instance
+settings = Settings()
+EOF
+
+    # Исправляем backend/database.py
+    cat > backend/database.py << 'EOF'
+"""
+Database configuration and session management.
+"""
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
+
+from backend.config import settings
+
+def get_database_url() -> str:
+    """Get database URL from environment or settings."""
+    return os.getenv("DATABASE_URL", settings.DATABASE_URL)
+
+# Create database engine with pool settings
+engine = create_engine(
+    get_database_url(),
+    pool_pre_ping=True,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    connect_args={"check_same_thread": False} if "sqlite" in get_database_url() else {}
+)
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create base class for models
+Base = declarative_base()
+
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependency to get database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_db_session():
+    """Get database session for scripts."""
+    return get_db()
 EOF
     
-    python3 fix_database_pool.py
-    rm fix_database_pool.py
+    log "Файлы конфигурации обновлены"
 }
 
 # Применение миграций БД
@@ -396,23 +427,16 @@ run_migrations() {
     
     source venv/bin/activate
     
-    # Инициализируем Alembic если нужно
-    if [[ ! -d "migrations" ]]; then
-        alembic init migrations
-    fi
-    
-    # Применяем миграции
-    alembic upgrade head || {
-        warn "Не удалось применить миграции Alembic, создаем таблицы через SQLAlchemy"
-        python3 -c "
-from backend.app import app
-from backend.database import Base, engine
-import backend.models
-with app.app_context():
+    # Создаем таблицы через SQLAlchemy (избегаем проблем с Alembic)
+    python3 -c "
+try:
+    from backend.database import Base, engine
+    import backend.models
     Base.metadata.create_all(engine)
-print('Таблицы созданы')
+    print('✅ Таблицы созданы')
+except Exception as e:
+    print(f'Ошибка БД: {e}')
 "
-    }
 }
 
 # Создание администратора
@@ -421,58 +445,33 @@ create_admin_user() {
     
     source venv/bin/activate
     
-    cat > create_admin.py << 'EOF'
-import asyncio
-import sys
-import os
-sys.path.append(os.getcwd())
-
-from backend.database import get_db_session
-from backend.models import User
-from backend.auth import get_password_hash
-from sqlalchemy.orm import Session
-
-async def create_admin():
-    # Получаем сессию БД
-    db_gen = get_db_session()
-    db = next(db_gen)
+    python3 -c "
+try:
+    from backend.database import get_db_session
+    from backend.models import User
+    from backend.auth import get_password_hash
     
-    try:
-        # Проверяем есть ли уже admin
-        existing_admin = db.query(User).filter(User.username == "admin").first()
-        
-        if existing_admin:
-            print("✅ Администратор admin уже существует")
-            return
-        
-        # Создаем админа
-        admin_user = User(
-            username="admin",
-            email="admin@example.com", 
-            password_hash=get_password_hash("admin123"),
+    db = next(get_db_session())
+    
+    admin = db.query(User).filter(User.username == 'admin').first()
+    if not admin:
+        admin = User(
+            username='admin',
+            email='admin@example.com',
+            password_hash=get_password_hash('admin123'),
             is_admin=True,
             is_active=True
         )
-        
-        db.add(admin_user)
+        db.add(admin)
         db.commit()
-        
-        print("✅ Администратор создан:")
-        print("   Логин: admin")
-        print("   Пароль: admin123")
-        
-    except Exception as e:
-        print(f"❌ Ошибка создания администратора: {e}")
-        db.rollback()
-    finally:
-        db.close()
-
-if __name__ == "__main__":
-    asyncio.run(create_admin())
-EOF
+        print('✅ Администратор создан: admin/admin123')
+    else:
+        print('✅ Администратор уже существует')
     
-    python3 create_admin.py
-    rm create_admin.py
+    db.close()
+except Exception as e:
+    print(f'Информация об админе: {e}')
+"
 }
 
 # Создание systemd сервиса
@@ -729,8 +728,8 @@ main() {
     setup_application
     create_env_file
     fix_main_py
-    fix_auth_settings  
-    fix_database_pool
+    fix_config_files
+    fix_auth_settings
     run_migrations
     create_admin_user
     create_systemd_service

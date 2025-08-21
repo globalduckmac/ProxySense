@@ -135,18 +135,135 @@ if __name__ == "__main__":
     )
 EOF
 
-# Исправление настроек аутентификации
-log "Исправление настроек cookie..."
+# Исправление файлов конфигурации
+log "Исправление конфигурационных файлов..."
+
+# Исправляем backend/config.py
+cat > backend/config.py << 'EOF'
+"""
+Application configuration management.
+"""
+import os
+from pydantic_settings import BaseSettings
+from typing import List
+
+
+class Settings(BaseSettings):
+    """Application settings."""
+    
+    # Database
+    DATABASE_URL: str = "sqlite:///./app.db"
+    
+    # Security
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    JWT_SECRET_KEY: str = "dev-jwt-secret-key-change-in-production"
+    ENCRYPTION_KEY: str = ""
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ENCRYPTION_KEY_PATH: str = "./encryption.key"
+    
+    # Application
+    DEBUG: bool = True
+    ENVIRONMENT: str = "development"
+    LOG_LEVEL: str = "INFO"
+    
+    # Database Pool Settings
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 30
+    DB_POOL_TIMEOUT: int = 60
+    
+    # Cookie Settings
+    COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: str = "lax"
+    
+    # Monitoring Settings
+    SERVER_CHECK_INTERVAL: int = 300
+    NS_CHECK_INTERVAL: int = 3600
+    ALERT_COOLDOWN: int = 1800
+    
+    # Telegram
+    TELEGRAM_BOT_TOKEN: str = ""
+    TELEGRAM_CHAT_ID: str = ""
+    
+    # SSH
+    SSH_TIMEOUT: int = 30
+    SSH_CONNECT_TIMEOUT: int = 10
+    
+    # Glances
+    GLANCES_POLL_INTERVAL: int = 60
+    GLANCES_TIMEOUT: int = 10
+    GLANCES_MAX_FAILURES: int = 3
+    
+    # DNS
+    DNS_TIMEOUT: int = 5
+    DNS_SERVERS: str = "8.8.8.8,1.1.1.1"
+    
+    class Config:
+        env_file = ".env"
+    
+    @property
+    def dns_servers_list(self) -> List[str]:
+        """Get DNS servers as a list."""
+        return [server.strip() for server in self.DNS_SERVERS.split(",")]
+
+
+# Global settings instance
+settings = Settings()
+EOF
+
+# Исправляем backend/database.py
+cat > backend/database.py << 'EOF'
+"""
+Database configuration and session management.
+"""
+import os
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from typing import Generator
+
+from backend.config import settings
+
+def get_database_url() -> str:
+    """Get database URL from environment or settings."""
+    return os.getenv("DATABASE_URL", settings.DATABASE_URL)
+
+# Create database engine with pool settings
+engine = create_engine(
+    get_database_url(),
+    pool_pre_ping=True,
+    pool_size=settings.DB_POOL_SIZE,
+    max_overflow=settings.DB_MAX_OVERFLOW,
+    pool_timeout=settings.DB_POOL_TIMEOUT,
+    connect_args={"check_same_thread": False} if "sqlite" in get_database_url() else {}
+)
+
+# Create session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+# Create base class for models
+Base = declarative_base()
+
+
+def get_db() -> Generator[Session, None, None]:
+    """Dependency to get database session."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def get_db_session():
+    """Get database session for scripts."""
+    return get_db()
+EOF
+
+# Исправление настроек cookie в auth.py
 if [[ -f "backend/auth.py" ]]; then
     sed -i 's/secure=True/secure=False/g' backend/auth.py
     sed -i 's/samesite="strict"/samesite="lax"/g' backend/auth.py
     sed -i 's/samesite="Strict"/samesite="lax"/g' backend/auth.py
 fi
-
-# Исправление настроек БД пула
-log "Исправление настроек пула БД..."
-find backend/ -name "*.py" -exec sed -i 's/pool_size=5/pool_size=20/g' {} \;
-find backend/ -name "*.py" -exec sed -i 's/max_overflow=10/max_overflow=30/g' {} \;
 
 # Инициализация БД
 log "Инициализация базы данных..."
