@@ -197,12 +197,11 @@ function removeTarget(targetId) {
     if (target) {
         target.remove();
     }
-    
-    // Ensure at least one target remains
-    const remainingTargets = document.querySelectorAll('.target-input');
-    if (remainingTargets.length === 0) {
-        addTarget();
-    }
+}
+
+function submitUpstream(event) {
+    event.preventDefault();
+    saveUpstream();
 }
 
 async function saveUpstream() {
@@ -258,17 +257,142 @@ async function saveUpstream() {
         console.error('Error saving upstream:', error);
         alert('Failed to save upstream');
     }
+                </div>
+                <div class="form-group">
+                    <label>Port</label>
+                    <input type="number" name="targets[${targetId}][port]" value="${port}" min="1" max="65535" required>
+                </div>
+                <div class="form-group">
+                    <label>Weight</label>
+                    <input type="number" name="targets[${targetId}][weight]" value="${weight}" min="1" max="100">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-sm btn-danger" onclick="removeTarget(${targetId})">
+                        <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    targetsContainer.insertAdjacentHTML('beforeend', targetHtml);
+}
+
+function removeTarget(targetId) {
+    const targetElement = document.getElementById(`target-${targetId}`);
+    if (targetElement) {
+        targetElement.remove();
+    }
+    
+    // Ensure at least one target remains
+    const remainingTargets = document.querySelectorAll('.target-input');
+    if (remainingTargets.length === 0) {
+        addTarget();
+    }
+}
+
+function submitUpstream(event) {
+    event.preventDefault();
+    
+    const formData = new FormData(event.target);
+    const upstreamData = {
+        name: formData.get('name'),
+        targets: []
+    };
+    
+    // Extract targets data
+    const targetInputs = document.querySelectorAll('.target-input');
+    targetInputs.forEach((targetInput, index) => {
+        const hostInput = targetInput.querySelector('input[name*="[host]"]');
+        const portInput = targetInput.querySelector('input[name*="[port]"]');
+        const weightInput = targetInput.querySelector('input[name*="[weight]"]');
+        
+        if (hostInput.value && portInput.value) {
+            upstreamData.targets.push({
+                host: hostInput.value,
+                port: parseInt(portInput.value),
+                weight: parseInt(weightInput.value) || 1
+            });
+        }
+    });
+    
+    if (upstreamData.targets.length === 0) {
+        showNotification('At least one target is required', 'error');
+        return;
+    }
+    
+    const url = editingUpstreamId ? `/api/upstreams/${editingUpstreamId}` : '/api/upstreams/';
+    const method = editingUpstreamId ? 'PUT' : 'POST';
+    
+    showLoading();
+    
+    fetch(url, {
+        method: method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(upstreamData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.id) {
+            showNotification('Upstream saved successfully', 'success');
+            closeUpstreamModal();
+            location.reload();
+        } else {
+            showNotification(data.detail || 'Failed to save upstream', 'error');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to save upstream', 'error');
+        console.error('Error:', error);
+    });
+}
+
+function loadUpstreamData(upstreamId) {
+    showLoading();
+    
+    fetch(`/api/upstreams/${upstreamId}`, {
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        
+        // Fill form with upstream data
+        document.getElementById('upstream-name').value = data.name;
+        
+        // Add target inputs with data
+        const targetsContainer = document.getElementById('targets-container');
+        targetsContainer.innerHTML = '';
+        targetCounter = 0;
+        
+        data.targets.forEach(target => {
+            addTarget(target.host, target.port, target.weight);
+        });
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to load upstream data', 'error');
+        console.error('Error:', error);
+    });
 }
 
 function filterUpstreams() {
-    const searchInput = document.getElementById('upstream-search');
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = document.getElementById('upstream-search').value.toLowerCase();
     const upstreamCards = document.querySelectorAll('.upstream-card');
     
     upstreamCards.forEach(card => {
-        const name = card.getAttribute('data-name') || '';
-        const matches = name.includes(searchTerm);
-        card.style.display = matches ? '' : 'none';
+        const name = card.dataset.name;
+        const match = !searchTerm || name.includes(searchTerm);
+        card.style.display = match ? 'block' : 'none';
     });
 }
 
@@ -276,32 +400,35 @@ function editUpstream(upstreamId) {
     openUpstreamModal(upstreamId);
 }
 
-async function deleteUpstream(upstreamId) {
-    if (!confirm('Are you sure you want to delete this upstream?')) {
+function deleteUpstream(upstreamId) {
+    if (!confirm('Are you sure you want to delete this upstream? This action cannot be undone.')) {
         return;
     }
     
-    try {
-        const response = await fetch(`/api/upstreams/${upstreamId}`, {
-            method: 'DELETE',
-            credentials: 'include'
-        });
-        
-        if (response.ok) {
-            location.reload();
-        } else {
-            const error = await response.json().catch(() => ({}));
-            alert('Error: ' + (error.detail || 'Failed to delete upstream'));
+    showLoading();
+    
+    fetch(`/api/upstreams/${upstreamId}`, {
+        method: 'DELETE',
+        headers: {
+            'Authorization': `Bearer ${getAuthToken()}`
         }
-    } catch (error) {
-        console.error('Error deleting upstream:', error);
-        alert('Failed to delete upstream');
-    }
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        showNotification('Upstream deleted successfully', 'success');
+        location.reload();
+    })
+    .catch(error => {
+        hideLoading();
+        showNotification('Failed to delete upstream', 'error');
+        console.error('Error:', error);
+    });
 }
 
-// Initialize when page loads
+// Initialize with one target when page loads
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Upstreams page loaded');
+    // Page is ready
 });
 </script>
 {% endblock %}
