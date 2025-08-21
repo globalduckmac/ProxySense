@@ -294,7 +294,15 @@ async def delete_server(
     server_name = server.name
     
     # Delete related records first to avoid foreign key constraint violations
-    from backend.models import Task, Alert
+    from backend.models import Task, Alert, TaskLog
+    
+    # Get tasks for this server to delete their logs first
+    tasks = db.query(Task).filter(Task.server_id == server_id).all()
+    task_ids = [task.id for task in tasks]
+    
+    # Delete task logs first (if any)
+    if task_ids:
+        db.query(TaskLog).filter(TaskLog.task_id.in_(task_ids)).delete(synchronize_session=False)
     
     # Delete related tasks
     db.query(Task).filter(Task.server_id == server_id).delete()
