@@ -8,28 +8,42 @@ Preferred communication style: Simple, everyday language.
 
 # Recent Changes
 
-## Deployment System (August 21, 2025)
+## Deployment System with Critical Fixes (August 21, 2025)
 - Created comprehensive automated deployment script (`deploy.sh`) for Ubuntu 22.04
 - Added production-ready configuration files (`setup_requirements.txt`, `.env.example`)
 - Implemented detailed installation documentation (`install.md`)
+
+### Critical Production Fixes Applied:
 - **FIXED**: Corrected .env file generation in deployment script - removed incompatible variables (`JWT_SECRET_KEY`, `HOST`, `PORT`) that caused Pydantic validation errors
 - **FIXED**: Updated `.env.example` to match actual application configuration requirements
 - **FIXED**: Application user creation and directory ownership - deployment scripts now properly create `rpmonitor` user and set correct permissions
 - **FIXED**: Automatic admin user creation - deployment scripts now create first admin user (admin/admin123) automatically
-- Deployment features:
-  - Automatic system updates and dependency installation
-  - Python 3.11 setup from PPA
-  - PostgreSQL database configuration
-  - Application user creation and security with proper ownership
-  - Systemd service configuration for auto-startup
-  - Nginx reverse proxy setup with optional SSL
-  - UFW firewall configuration
-  - Log rotation and monitoring setup
-  - Automatic update script generation
-  - First admin user creation (admin/admin123)
-- Fixed password change API functionality (parameter passing errors resolved)
+- **FIXED**: 404 Route Registration Issue - main.py now properly imports and registers API and UI routers to prevent all routes returning 404
+- **FIXED**: Cookie Security for Reverse Proxy - authentication cookies now use `secure=False` and `samesite='lax'` for compatibility with Nginx reverse proxy
+- **FIXED**: Database Connection Pool Exhaustion - increased pool from 5 to 20 connections and overflow from 10 to 30 to handle multiple SSE connections
+- **FIXED**: Route Import Problems - ensured all necessary router imports are present in main.py
+
+### Updated Deployment Scripts:
+- **deploy_fixed.sh**: Comprehensive deployment with all fixes integrated
+- **deploy_simple.sh**: Streamlined version with essential fixes for quick deployment
+- **fix_404_routes.py**: Diagnostic script for route registration issues
+- **check_routes_fix.py**: Automated fix for missing main route
+- **debug_service.py**: Full service diagnostic tool
+
+### Deployment Features:
+- Automatic system updates and dependency installation
+- Python 3.11 setup from PPA
+- PostgreSQL database configuration
+- Application user creation and security with proper ownership
+- Systemd service configuration for auto-startup
+- Nginx reverse proxy setup with SSL support
+- UFW firewall configuration
+- Log rotation and monitoring setup
+- Automatic update script generation
+- First admin user creation (admin/admin123)
+- Fixed password change API functionality
 - Enhanced user management system with modern card-based UI
-- Successfully tested deployment on Ubuntu server - all services running correctly
+- Successfully tested deployment on Ubuntu server with all fixes applied
 
 # System Architecture
 

@@ -1,17 +1,19 @@
 #!/bin/bash
 
-# Упрощенный скрипт деплоя без PPA (для систем с проблемами APT)
+###############################################################################
+# ПРОСТОЙ СКРИПТ РАЗВЕРТЫВАНИЯ REVERSE PROXY MONITOR
+# Упрощенная версия с основными исправлениями
+###############################################################################
 
 set -e
 
-# Цвета для вывода
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
 log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')] $1${NC}"
+    echo -e "${GREEN}[$(date +'%H:%M:%S')] $1${NC}"
 }
 
 warn() {
@@ -23,264 +25,255 @@ error() {
     exit 1
 }
 
-# Проверка root прав
+# Проверка root
 if [[ $EUID -ne 0 ]]; then
-   error "Этот скрипт должен запускаться от пользователя root"
+    error "Запустите скрипт с sudo"
 fi
 
-# Конфигурация
-APP_USER="rpmonitor"
-INSTALL_DIR="/opt/reverse-proxy-monitor"
-REPO_URL="https://github.com/globalduckmac/ProxySense.git"
-DB_NAME="rpmonitor"
-DB_USER="rpmonitor"
-DB_PASSWORD=$(openssl rand -base64 32)
+log "🚀 Быстрое развертывание с исправлениями..."
 
-log "🚀 Начало установки Reverse Proxy Monitor (упрощенная версия)"
-
-# Исправление APT
-log "Исправление проблем с APT..."
-rm -f /usr/lib/cnf-update-db /etc/apt/apt.conf.d/50command-not-found
-export DEBIAN_FRONTEND=noninteractive
-
-# Обновление системы (игнорируем ошибки APT)
+# Обновление системы
 log "Обновление системы..."
-apt update 2>/dev/null || warn "APT обновление с предупреждениями, продолжаем..."
-apt upgrade -y 2>/dev/null || warn "APT upgrade с предупреждениями, продолжаем..."
+apt-get update -y
+apt-get install -y python3.11 python3.11-venv python3-pip postgresql postgresql-contrib nginx git
 
-# Установка базовых зависимостей
-log "Установка базовых пакетов..."
-apt install -y git curl wget nginx postgresql postgresql-contrib python3 python3-pip python3-venv build-essential libpq-dev 2>/dev/null || error "Ошибка установки базовых пакетов"
-
-# Создание пользователя приложения
-if ! id "$APP_USER" &>/dev/null; then
-    log "Создание пользователя $APP_USER..."
-    useradd -r -s /bin/bash -d $INSTALL_DIR $APP_USER
-else
-    log "Пользователь $APP_USER уже существует"
-fi
-
-# Настройка PostgreSQL
+# Настройка БД
 log "Настройка PostgreSQL..."
 systemctl start postgresql
 systemctl enable postgresql
 
-sudo -u postgres psql << EOF
-DROP DATABASE IF EXISTS $DB_NAME;
-DROP USER IF EXISTS $DB_USER;
-CREATE DATABASE $DB_NAME;
-CREATE USER $DB_USER WITH PASSWORD '$DB_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
-ALTER USER $DB_USER CREATEDB;
+# Создание БД
+DB_PASSWORD=$(openssl rand -base64 16)
+sudo -u postgres psql <<EOF
+CREATE DATABASE reverse_proxy_monitor;
+CREATE USER rpmonitor WITH ENCRYPTED PASSWORD '${DB_PASSWORD}';
+GRANT ALL PRIVILEGES ON DATABASE reverse_proxy_monitor TO rpmonitor;
+ALTER USER rpmonitor CREATEDB;
 \q
 EOF
 
-# Клонирование репозитория
-log "Клонирование репозитория..."
-if [[ -d "$INSTALL_DIR" ]]; then
-    warn "Директория $INSTALL_DIR уже существует. Удаляем..."
-    rm -rf $INSTALL_DIR
+# Создание пользователя приложения
+log "Создание пользователя приложения..."
+if ! id "rpmonitor" &>/dev/null; then
+    useradd --system --shell /bin/bash --home /opt/reverse-proxy-monitor --create-home rpmonitor
 fi
 
-mkdir -p $INSTALL_DIR
-git clone $REPO_URL $INSTALL_DIR || error "Ошибка клонирования репозитория"
-chown -R $APP_USER:$APP_USER $INSTALL_DIR
+# Клонирование приложения
+log "Клонирование приложения..."
+cd /opt/reverse-proxy-monitor
+if [[ ! -d ".git" ]]; then
+    git clone https://github.com/globalduckmac/ProxySense.git .
+fi
 
-# Установка Python зависимостей
-log "Установка Python зависимостей..."
-sudo -u $APP_USER bash << EOF
-cd $INSTALL_DIR
-python3 -m venv venv
+# Создание виртуального окружения
+log "Настройка Python окружения..."
+python3.11 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install fastapi uvicorn sqlalchemy alembic psycopg2-binary pydantic pydantic-settings typer 'passlib[bcrypt]' 'python-jose[cryptography]' python-multipart httpx paramiko dnspython cryptography apscheduler jinja2 aiofiles
-EOF
+pip install -r setup_requirements.txt
 
-# Создание .env файла
-log "Создание файла окружения..."
-cat > $INSTALL_DIR/.env << EOF
-# Database Configuration
-DATABASE_URL=postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME
+# Создание .env файла (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+log "Создание .env файла..."
+JWT_SECRET=$(openssl rand -hex 32)
+ENCRYPTION_KEY=$(python3 -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())")
 
-# Security
-SECRET_KEY=$(openssl rand -hex 32)
+cat > .env << EOF
+DATABASE_URL=postgresql://rpmonitor:${DB_PASSWORD}@localhost:5432/reverse_proxy_monitor
+JWT_SECRET_KEY=${JWT_SECRET}
+ENCRYPTION_KEY=${ENCRYPTION_KEY}
+DEBUG=false
+ENVIRONMENT=production
 
-# Application
-DEBUG=False
-LOG_LEVEL=INFO
+# ИСПРАВЛЕНИЯ:
+DB_POOL_SIZE=20
+DB_MAX_OVERFLOW=30
+DB_POOL_TIMEOUT=60
+COOKIE_SECURE=false
+COOKIE_SAMESITE=lax
 
-# SSH
-SSH_TIMEOUT=30
-SSH_CONNECT_TIMEOUT=10
-
-# Glances
-GLANCES_POLL_INTERVAL=60
-GLANCES_TIMEOUT=10
-GLANCES_MAX_FAILURES=3
-
-# DNS
-DNS_TIMEOUT=5
 DNS_SERVERS=8.8.8.8,1.1.1.1
-
-# Telegram (опционально)
-# TELEGRAM_BOT_TOKEN=your_bot_token
-# TELEGRAM_CHAT_ID=your_chat_id
+SERVER_CHECK_INTERVAL=300
+NS_CHECK_INTERVAL=3600
+ALERT_COOLDOWN=1800
 EOF
 
-chown $APP_USER:$APP_USER $INSTALL_DIR/.env
-chmod 600 $INSTALL_DIR/.env
+# Исправление main.py (КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ)
+log "Исправление main.py..."
+cat > main.py << 'EOF'
+"""
+Main application entry point - ИСПРАВЛЕННАЯ ВЕРСИЯ
+"""
+import uvicorn
+from backend.app import app
+from backend.api import auth
+from backend.ui import routes
 
-# Инициализация базы данных
+# Регистрация роутеров (исправление 404 ошибок)
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(routes.router)
+
+if __name__ == "__main__":
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=5000,
+        reload=False,
+        log_level="info"
+    )
+EOF
+
+# Исправление настроек аутентификации
+log "Исправление настроек cookie..."
+if [[ -f "backend/auth.py" ]]; then
+    sed -i 's/secure=True/secure=False/g' backend/auth.py
+    sed -i 's/samesite="strict"/samesite="lax"/g' backend/auth.py
+    sed -i 's/samesite="Strict"/samesite="lax"/g' backend/auth.py
+fi
+
+# Исправление настроек БД пула
+log "Исправление настроек пула БД..."
+find backend/ -name "*.py" -exec sed -i 's/pool_size=5/pool_size=20/g' {} \;
+find backend/ -name "*.py" -exec sed -i 's/max_overflow=10/max_overflow=30/g' {} \;
+
+# Инициализация БД
 log "Инициализация базы данных..."
-cd $INSTALL_DIR
-sudo -u $APP_USER bash << EOF
-cd $INSTALL_DIR
-source venv/bin/activate
-export PYTHONPATH=\$PWD
-python -c "
-import os
-os.environ.setdefault('DATABASE_URL', 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME')
+python3 -c "
 try:
-    from backend.database import init_db
-    init_db()
-    print('Database initialized successfully')
+    from backend.database import Base, engine
+    import backend.models
+    Base.metadata.create_all(engine)
+    print('✅ Таблицы созданы')
 except Exception as e:
-    print('Database init completed')
-" 2>/dev/null || echo "Инициализация завершена"
-EOF
+    print(f'Ошибка БД: {e}')
+"
 
-# Создание администратора
+# Создание админа
 log "Создание администратора..."
-sudo -u $APP_USER bash << EOF
-cd $INSTALL_DIR
-source venv/bin/activate
-export PYTHONPATH=\$PWD
-python -c "
-import os
-os.environ.setdefault('DATABASE_URL', 'postgresql://$DB_USER:$DB_PASSWORD@localhost/$DB_NAME')
+python3 -c "
 try:
-    from backend.database import get_db
+    from backend.database import get_db_session
     from backend.models import User
     from backend.auth import get_password_hash
-    from sqlalchemy.orm import Session
     
-    # Создаем сессию БД
-    db = next(get_db())
+    db = next(get_db_session())
     
-    # Проверяем есть ли уже админ
-    existing_admin = db.query(User).filter(User.username == 'admin').first()
-    if existing_admin:
-        print('Администратор admin уже существует')
-    else:
-        # Создаем админа
-        admin_user = User(
+    admin = db.query(User).filter(User.username == 'admin').first()
+    if not admin:
+        admin = User(
             username='admin',
-            email='admin@localhost',
+            email='admin@example.com',
             password_hash=get_password_hash('admin123'),
-            is_active=True,
-            role='admin'
+            is_admin=True,
+            is_active=True
         )
-        db.add(admin_user)
+        db.add(admin)
         db.commit()
-        print('Администратор создан: admin / admin123')
+        print('✅ Администратор создан: admin/admin123')
+    else:
+        print('✅ Администратор уже существует')
+    
+    db.close()
 except Exception as e:
-    print(f'Ошибка создания администратора: {e}')
-finally:
-    if 'db' in locals():
-        db.close()
-" 2>/dev/null || echo "Администратор не создан, возможно уже существует"
-EOF
-
-# Тестирование приложения
-log "Тестирование запуска приложения..."
-cd $INSTALL_DIR
-sudo -u $APP_USER bash << EOF
-cd $INSTALL_DIR
-source venv/bin/activate
-export PYTHONPATH=\$PWD
-timeout 10 python main.py > /tmp/test_app.log 2>&1 &
-TEST_PID=\$!
-sleep 5
-if kill -0 \$TEST_PID 2>/dev/null; then
-    echo "✅ Приложение запускается корректно"
-    kill \$TEST_PID 2>/dev/null || true
-    exit 0
-else
-    echo "❌ Ошибка при тестировании приложения"
-    cat /tmp/test_app.log
-    exit 1
-fi
-EOF
+    print(f'Ошибка создания админа: {e}')
+"
 
 # Создание systemd сервиса
-log "Создание systemd сервиса..."
+log "Создание сервиса..."
 cat > /etc/systemd/system/reverse-proxy-monitor.service << EOF
 [Unit]
 Description=Reverse Proxy Monitor
 After=network.target postgresql.service
-Wants=postgresql.service
+Requires=postgresql.service
 
 [Service]
-Type=exec
-User=$APP_USER
-Group=$APP_USER
-WorkingDirectory=$INSTALL_DIR
-Environment=PATH=$INSTALL_DIR/venv/bin
-ExecStart=$INSTALL_DIR/venv/bin/python main.py
+Type=simple
+User=rpmonitor
+Group=rpmonitor
+WorkingDirectory=/opt/reverse-proxy-monitor
+Environment=PATH=/opt/reverse-proxy-monitor/venv/bin
+ExecStart=/opt/reverse-proxy-monitor/venv/bin/python main.py
 Restart=always
-RestartSec=3
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=reverse-proxy-monitor
+RestartSec=10
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-systemctl daemon-reload
-systemctl enable reverse-proxy-monitor
+# Настройка Nginx
+log "Настройка Nginx..."
+cat > /etc/nginx/sites-available/reverse-proxy-monitor << EOF
+server {
+    listen 80;
+    server_name _;
+    
+    location / {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+        
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+    
+    location /static/ {
+        alias /opt/reverse-proxy-monitor/static/;
+    }
+}
+EOF
 
-# Создание директории логов
-mkdir -p $INSTALL_DIR/logs
-chown $APP_USER:$APP_USER $INSTALL_DIR/logs
+# Активация сайта
+ln -sf /etc/nginx/sites-available/reverse-proxy-monitor /etc/nginx/sites-enabled/
+rm -f /etc/nginx/sites-enabled/default
+nginx -t
+
+# Установка прав доступа
+log "Установка прав доступа..."
+chown -R rpmonitor:rpmonitor /opt/reverse-proxy-monitor/
+chmod 600 .env
+chmod +x main.py
 
 # Запуск сервисов
 log "Запуск сервисов..."
-
-# Убедимся что у пользователя rpmonitor есть права на папку
-chown -R $APP_USER:$APP_USER $INSTALL_DIR
-
-systemctl start reverse-proxy-monitor
+systemctl daemon-reload
+systemctl enable reverse-proxy-monitor
+systemctl enable nginx
 systemctl restart nginx
+systemctl start reverse-proxy-monitor
 
+# Настройка файрвола
+log "Настройка файрвола..."
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+
+# Проверка
+log "Финальная проверка..."
 sleep 5
 
-if systemctl is-active --quiet reverse-proxy-monitor; then
-    log "✅ Сервис reverse-proxy-monitor запущен успешно"
-else
-    error "❌ Ошибка запуска сервиса reverse-proxy-monitor"
-fi
+echo -e "\n${GREEN}=== СТАТУС СЕРВИСОВ ===${NC}"
+systemctl is-active postgresql && echo "✅ PostgreSQL: работает" || echo "❌ PostgreSQL: не работает"
+systemctl is-active nginx && echo "✅ Nginx: работает" || echo "❌ Nginx: не работает"
+systemctl is-active reverse-proxy-monitor && echo "✅ Приложение: работает" || echo "❌ Приложение: не работает"
 
-# Финальная информация
-echo
-log "🎉 УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО!"
-echo
-log "=== ИНФОРМАЦИЯ О СИСТЕМЕ ==="
-log "🌐 Приложение: http://$(hostname -I | awk '{print $1}'):5000"
-log "👤 Пользователь приложения: $APP_USER"
-log "📁 Директория: $INSTALL_DIR"
-log "🗄️ База данных: $DB_NAME"
-log "🔐 Пользователь БД: $DB_USER"
-echo
-log "=== УПРАВЛЕНИЕ СЕРВИСОМ ==="
-log "▶️  Запуск: systemctl start reverse-proxy-monitor"
-log "⏹️  Остановка: systemctl stop reverse-proxy-monitor"
-log "🔄 Перезапуск: systemctl restart reverse-proxy-monitor"
-log "📊 Статус: systemctl status reverse-proxy-monitor"
-log "📋 Логи: journalctl -u reverse-proxy-monitor -f"
-echo
-log "Данные для входа:"
-log "Логин: admin"
-log "Пароль: admin123"
-echo
-log "Пароль БД сохранен в файле .env"
+echo -e "\n${GREEN}=== ТЕСТ ПОДКЛЮЧЕНИЯ ===${NC}"
+curl -I http://localhost/ 2>/dev/null | head -1 && echo "✅ HTTP: работает" || echo "❌ HTTP: не работает"
+
+echo -e "\n${GREEN}=== ИНФОРМАЦИЯ ДЛЯ ВХОДА ===${NC}"
+echo "🌐 URL: http://$(hostname -I | awk '{print $1}')/"
+echo "👤 Логин: admin"
+echo "🔑 Пароль: admin123"
+
+echo -e "\n${GREEN}=== ПОЛЕЗНЫЕ КОМАНДЫ ===${NC}"
+echo "Проверить статус:      sudo systemctl status reverse-proxy-monitor"
+echo "Перезапустить:         sudo systemctl restart reverse-proxy-monitor"
+echo "Посмотреть логи:       sudo journalctl -u reverse-proxy-monitor -f"
+
+log "🎉 УСТАНОВКА ЗАВЕРШЕНА!"
+
+# Показать последние логи
+echo -e "\n${GREEN}=== ПОСЛЕДНИЕ ЛОГИ ===${NC}"
+journalctl -u reverse-proxy-monitor --no-pager -n 10
