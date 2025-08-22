@@ -38,7 +38,12 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
     
     def _is_authenticated(self, request: Request) -> bool:
-        """Проверить Basic Auth заголовки."""
+        """Проверить Basic Auth заголовки или JWT cookie."""
+        # Сначала проверяем JWT cookie для authenticated пользователей
+        if self._check_jwt_cookie(request):
+            return True
+            
+        # Затем проверяем Basic Auth заголовки
         authorization = request.headers.get('Authorization')
         if not authorization:
             return False
@@ -59,6 +64,18 @@ class BasicAuthMiddleware(BaseHTTPMiddleware):
             
         except (ValueError, UnicodeDecodeError):
             return False
+    
+    def _check_jwt_cookie(self, request: Request) -> bool:
+        """Проверить JWT токен в cookie."""
+        try:
+            from backend.auth import verify_token
+            token = request.cookies.get("access_token")
+            if token:
+                username = verify_token(token)
+                return username is not None
+        except:
+            pass
+        return False
     
     def _auth_required_response(self) -> Response:
         """Вернуть ответ требующий аутентификацию."""
