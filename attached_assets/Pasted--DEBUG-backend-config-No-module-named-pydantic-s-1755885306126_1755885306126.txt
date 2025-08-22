@@ -1,0 +1,54 @@
+[DEBUG] Тестирование импортов...
+=== ТЕСТ ИМПОРТОВ ===
+❌ backend.config: No module named 'pydantic_settings'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/config.py", line 5, in <module>
+    from pydantic_settings import BaseSettings
+ModuleNotFoundError: No module named 'pydantic_settings'
+❌ backend.database: No module named 'sqlalchemy'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/database.py", line 5, in <module>
+    from sqlalchemy import create_engine
+ModuleNotFoundError: No module named 'sqlalchemy'
+❌ backend.models: No module named 'sqlalchemy'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/models.py", line 6, in <module>
+    from sqlalchemy import (
+ModuleNotFoundError: No module named 'sqlalchemy'
+❌ backend.app: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/app.py", line 5, in <module>
+    from fastapi import FastAPI, Request
+ModuleNotFoundError: No module named 'fastapi'
+❌ backend.api.auth: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/api/auth.py", line 5, in <module>
+    from fastapi import APIRouter, Depends, HTTPException, status
+ModuleNotFoundError: No module named 'fastapi'
+❌ backend.ui.routes: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/ui/routes.py", line 4, in <module>
+    from fastapi import APIRouter, Request, Depends, HTTPException, status, Form
+ModuleNotFoundError: No module named 'fastapi'
+
+[DEBUG] Тестирование подключения к базе данных...
+=== ТЕСТ БАЗЫ ДАННЫХ ===
+❌ Ошибка БД: No module named 'sqlalchemy'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 103, in test_database
+    from backend.database import engine, SessionLocal
+  File "/opt/reverse-proxy-monitor/backend/database.py", line 5, in <module>
+    from sqlalchemy import create_engine
+ModuleNotFoundError: No module named 'sqlalchemy'
