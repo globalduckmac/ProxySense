@@ -11,6 +11,7 @@ import logging
 
 from backend.config import settings
 from backend.database import engine, Base
+from backend.middleware import BasicAuthMiddleware
 from backend.api import auth, servers, upstreams, domains, groups, tasks, alerts, settings as settings_api, users
 from backend.ui.routes import router as ui_router
 
@@ -54,6 +55,11 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan
 )
+
+# Add Basic Auth middleware (если включено)
+if settings.BASIC_AUTH_ENABLED:
+    app.add_middleware(BasicAuthMiddleware)
+    logger.info(f"Basic Authentication enabled for user: {settings.BASIC_AUTH_USERNAME}")
 
 # Add CORS middleware
 app.add_middleware(

@@ -73,6 +73,7 @@ Preferred communication style: Simple, everyday language.
 - **Password Security**: Bcrypt hashing secures password storage.
 - **Session Management**: HTTP-only cookies store authentication tokens.
 - **Role-based Access**: Differentiates between admin and regular user roles with appropriate permission controls.
+- **Basic HTTP Authentication**: Optional additional security layer with configurable credentials, protects all routes except static files, includes timing attack protection.
 
 ## Core Services
 - **SSH Client**: Paramiko-based SSH connections handle server provisioning and management.

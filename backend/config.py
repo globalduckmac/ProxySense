@@ -56,6 +56,11 @@ class Settings(BaseSettings):
     DNS_TIMEOUT: int = 5
     DNS_SERVERS: str = "8.8.8.8,1.1.1.1"
     
+    # Basic Authentication (для дополнительной защиты)
+    BASIC_AUTH_ENABLED: bool = False
+    BASIC_AUTH_USERNAME: str = "admin"
+    BASIC_AUTH_PASSWORD: str = "secret"
+    
     class Config:
         env_file = ".env"
     
