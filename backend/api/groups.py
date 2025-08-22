@@ -4,7 +4,7 @@ Domain group management API endpoints.
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, Integer
 from pydantic import BaseModel
 from datetime import datetime
 import logging
@@ -68,7 +68,7 @@ async def list_domain_groups(
         db.query(
             DomainGroup,
             func.count(Domain.id).label('domain_count'),
-            func.sum(func.cast(Domain.ssl, db.Integer)).label('ssl_count')
+            func.sum(func.cast(Domain.ssl, Integer)).label('ssl_count')
         )
         .outerjoin(Domain)
         .group_by(DomainGroup.id)
@@ -225,10 +225,18 @@ async def update_domain_group(
 @router.delete("/{group_id}")
 async def delete_domain_group(
     group_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_admin_user)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     """Delete a domain group."""
+    # Check cookie authentication first
+    current_user = await get_current_user_from_cookie(request, db)
+    if not current_user or current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated or insufficient permissions"
+        )
+    
     group = db.query(DomainGroup).filter(DomainGroup.id == group_id).first()
     if not group:
         raise HTTPException(

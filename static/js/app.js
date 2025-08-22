@@ -997,6 +997,33 @@ async function deleteUpstream(upstreamId) {
     }
 }
 
+async function deleteGroup(groupId) {
+    if (!confirm('Are you sure you want to delete this group?')) {
+        return;
+    }
+    
+    try {
+        showLoading('Deleting group...');
+        
+        const response = await apiRequest(`/api/groups/${groupId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response !== null) {
+            showNotification('Group deleted successfully', 'success');
+            // Remove the group card from the page
+            const groupCard = document.querySelector(`[data-group-id="${groupId}"]`);
+            if (groupCard) {
+                groupCard.remove();
+            }
+        }
+    } catch (error) {
+        showNotification(`Failed to delete group: ${error.message}`, 'error');
+    } finally {
+        hideLoading();
+    }
+}
+
 function filterUpstreams() {
     const searchInput = document.getElementById('upstream-search');
     const searchTerm = searchInput.value.toLowerCase();
