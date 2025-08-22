@@ -1,0 +1,152 @@
+ ДИАГНОСТИКА REVERSE-PROXY-MONITOR
+==================================================
+[DEBUG] Проверка окружения...
+=== ОКРУЖЕНИЕ ===
+Текущая директория: /opt/reverse-proxy-monitor
+Python путь: /usr/bin/python3
+Python версия: 3.11.13 (main, Jun  4 2025, 08:57:29) [GCC 11.4.0]
+✅ main.py
+✅ backend/app.py
+✅ backend/models.py
+✅ backend/config.py
+✅ venv/bin/python
+✅ .env
+
+[DEBUG] Проверка статуса сервиса...
+=== СТАТУС СЕРВИСА ===
+● reverse-proxy-monitor.service - Reverse Proxy Monitor
+     Loaded: loaded (/etc/systemd/system/reverse-proxy-monitor.service; enabled; vendor preset: enabled)
+     Active: active (running) since Fri 2025-08-22 17:47:21 UTC; 5min ago
+   Main PID: 33679 (python)
+      Tasks: 7 (limit: 2226)
+     Memory: 79.9M
+        CPU: 1.699s
+     CGroup: /system.slice/reverse-proxy-monitor.service
+             └─33679 /opt/reverse-proxy-monitor/venv/bin/python main.py
+
+Aug 22 17:52:56 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:56 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:52:56 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     50.26.160.118:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:57 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:57 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     50.26.160.118:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:52:57 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:53:04 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     97.184.179.185:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:53:05 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     97.184.179.185:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:53:15 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     47.7.156.105:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+Aug 22 17:53:17 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     47.7.156.105:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+
+
+[DEBUG] Проверка логов сервиса...
+=== ЛОГИ СЕРВИСА ===
+Aug 22 17:52:21 adjoiningface.aeza.network reverse-proxy-monitor[33679]: 2025-08-22 17:52:21,976 - backend.ns_monitor - INFO - Found 0 domains to check
+Aug 22 17:52:21 adjoiningface.aeza.network reverse-proxy-monitor[33679]: 2025-08-22 17:52:21,976 - backend.ns_monitor - INFO - All NS checks completed and committed to database
+Aug 22 17:52:21 adjoiningface.aeza.network reverse-proxy-monitor[33679]: 2025-08-22 17:52:21,976 - backend.ns_monitor - INFO - NS check cycle completed
+Aug 22 17:52:22 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     107.12.57.121:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:52:23 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     107.12.57.121:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+Aug 22 17:52:41 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     77.111.246.181:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:42 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     77.111.246.181:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:52:43 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     77.111.246.181:0 - "GET /apple-touch-icon.png HTTP/1.1" 404 Not Found
+Aug 22 17:52:43 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     77.111.246.181:0 - "GET /apple-touch-icon-precomposed.png HTTP/1.1" 404 Not Found
+Aug 22 17:52:43 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     77.111.246.181:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+Aug 22 17:52:56 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:56 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:52:56 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     50.26.160.118:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:57 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:52:57 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     50.26.160.118:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:52:57 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     149.88.22.79:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:53:04 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     97.184.179.185:0 - "GET / HTTP/1.1" 302 Found
+Aug 22 17:53:05 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     97.184.179.185:0 - "GET /auth/login HTTP/1.1" 200 OK
+Aug 22 17:53:15 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     47.7.156.105:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+Aug 22 17:53:17 adjoiningface.aeza.network reverse-proxy-monitor[33679]: INFO:     47.7.156.105:0 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+
+
+[DEBUG] Тестирование импортов...
+=== ТЕСТ ИМПОРТОВ ===
+❌ backend.config: No module named 'pydantic_settings'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/config.py", line 5, in <module>
+    from pydantic_settings import BaseSettings
+ModuleNotFoundError: No module named 'pydantic_settings'
+❌ backend.database: No module named 'sqlalchemy'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/database.py", line 5, in <module>
+    from sqlalchemy import create_engine
+ModuleNotFoundError: No module named 'sqlalchemy'
+❌ backend.models: No module named 'sqlalchemy'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/models.py", line 6, in <module>
+    from sqlalchemy import (
+ModuleNotFoundError: No module named 'sqlalchemy'
+❌ backend.app: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/app.py", line 5, in <module>
+    from fastapi import FastAPI, Request
+ModuleNotFoundError: No module named 'fastapi'
+❌ backend.api.auth: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/api/auth.py", line 5, in <module>
+    from fastapi import APIRouter, Depends, HTTPException, status
+ModuleNotFoundError: No module named 'fastapi'
+❌ backend.ui.routes: No module named 'fastapi'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 88, in test_import
+    __import__(module)
+  File "/opt/reverse-proxy-monitor/backend/ui/routes.py", line 4, in <module>
+    from fastapi import APIRouter, Request, Depends, HTTPException, status, Form
+ModuleNotFoundError: No module named 'fastapi'
+
+[DEBUG] Тестирование подключения к базе данных...
+=== ТЕСТ БАЗЫ ДАННЫХ ===
+❌ Ошибка БД: No module named 'sqlalchemy'
+Traceback (most recent call last):
+  File "/root/./debug_service.py", line 103, in test_database
+    from backend.database import engine, SessionLocal
+  File "/opt/reverse-proxy-monitor/backend/database.py", line 5, in <module>
+    from sqlalchemy import create_engine
+ModuleNotFoundError: No module named 'sqlalchemy'
+
+[DEBUG] Попытка запуска main.py...
+=== ТЕСТ ЗАПУСКА MAIN.PY ===
+✅ venv Python найден: /opt/reverse-proxy-monitor/venv/bin/python
+Return code: 1
+STDERR:
+INFO:     Started server process [34036]
+INFO:     Waiting for application startup.
+2025-08-22 17:53:21,412 - backend.app - INFO - Starting Reverse Proxy & Monitor application...
+2025-08-22 17:53:21,428 - backend.server_monitor - INFO - Server monitoring service started
+2025-08-22 17:53:21,429 - backend.ns_monitor - INFO - NS monitoring service started
+2025-08-22 17:53:21,429 - backend.ns_monitor - INFO - Checking NS records for all domains...
+2025-08-22 17:53:21,455 - backend.ns_monitor - INFO - Found 0 domains to check
+2025-08-22 17:53:21,455 - backend.ns_monitor - INFO - All NS checks completed and committed to database
+2025-08-22 17:53:21,455 - backend.ns_monitor - INFO - Initial NS check completed
+2025-08-22 17:53:21,466 - backend.ns_monitor - INFO - Starting NS check cycle...
+2025-08-22 17:53:21,466 - backend.ns_monitor - INFO - Checking NS records for all domains...
+2025-08-22 17:53:21,466 - backend.ns_monitor - INFO - Found 0 domains to check
+2025-08-22 17:53:21,466 - backend.ns_monitor - INFO - All NS checks completed and committed to database
+2025-08-22 17:53:21,467 - backend.ns_monitor - INFO - NS check cycle completed
+INFO:     Application startup complete.
+ERROR:    [Errno 98] error while attempting to bind on address ('0.0.0.0', 5000): address already in use
+INFO:     Waiting for application shutdown.
+2025-08-22 17:53:21,467 - backend.server_monitor - INFO - Server monitoring service stopped
+2025-08-22 17:53:21,467 - backend.ns_monitor - INFO - NS monitoring loop cancelled
+2025-08-22 17:53:21,467 - backend.ns_monitor - INFO - NS monitoring service stopped
+2025-08-22 17:53:21,467 - backend.app - INFO - Shutting down Reverse Proxy & Monitor application...
+INFO:     Application shutdown complete.
+
+
+🎯 РЕКОМЕНДАЦИИ:
+1. Проверьте логи сервиса выше на наличие ошибок
+2. Убедитесь что все модули импортируются корректно
+3. Проверьте настройки базы данных
+4. При необходимости перезапустите сервис: systemctl restart reverse-proxy-monitor
+root@adjoiningface:~# 
