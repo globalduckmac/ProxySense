@@ -108,6 +108,11 @@ DNS_SERVERS=8.8.8.8,1.1.1.1
 SERVER_CHECK_INTERVAL=300
 NS_CHECK_INTERVAL=3600
 ALERT_COOLDOWN=1800
+
+# Basic HTTP Authentication (дополнительная защита)
+BASIC_AUTH_ENABLED=false
+BASIC_AUTH_USERNAME=admin
+BASIC_AUTH_PASSWORD=changeme
 EOF
 
 # Исправление main.py (КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ)
