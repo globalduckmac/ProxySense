@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     
     # Glances
     GLANCES_POLL_INTERVAL: int = 60
-    GLANCES_TIMEOUT: int = 10
+    GLANCES_TIMEOUT: int = 30  # Увеличен с 10 до 30 секунд
     GLANCES_MAX_FAILURES: int = 3
     
     # DNS

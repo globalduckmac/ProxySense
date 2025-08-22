@@ -24,7 +24,22 @@ class GlancesClient:
         timeout = timeout or self.timeout
         
         try:
-            async with httpx.AsyncClient(timeout=timeout) as client:
+            # Создаем клиент с увеличенными таймаутами
+            timeout_config = httpx.Timeout(
+                connect=10.0,  # таймаут подключения
+                read=timeout,   # таймаут чтения
+                write=10.0,     # таймаут записи
+                pool=10.0       # таймаут пула соединений
+            )
+            
+            async with httpx.AsyncClient(
+                timeout=timeout_config,
+                limits=httpx.Limits(max_connections=10, max_keepalive_connections=5),
+                headers={"User-Agent": "Reverse-Proxy-Monitor/1.0"}
+            ) as client:
+                
+                logger.debug(f"Fetching Glances data from {url} with timeout {timeout}s")
+                
                 response = await client.get(
                     url,
                     auth=auth,
@@ -33,20 +48,23 @@ class GlancesClient:
                 
                 if response.status_code == 200:
                     data = response.json()
-                    logger.debug(f"Successfully fetched Glances data from {url}")
+                    logger.debug(f"Successfully fetched Glances data from {url}, data size: {len(str(data))}")
                     return data
                 else:
-                    logger.warning(f"Glances API returned status {response.status_code}: {response.text}")
+                    logger.warning(f"Glances API returned status {response.status_code}: {response.text[:200]}")
                     return None
         
-        except httpx.TimeoutException:
-            logger.warning(f"Timeout while fetching Glances data from {url}")
+        except httpx.TimeoutException as e:
+            logger.warning(f"Timeout while fetching Glances data from {url}: {str(e)}")
             return None
-        except httpx.ConnectError:
-            logger.warning(f"Connection error while fetching Glances data from {url}")
+        except httpx.ConnectError as e:
+            logger.warning(f"Connection error while fetching Glances data from {url}: {str(e)}")
+            return None
+        except httpx.HTTPStatusError as e:
+            logger.warning(f"HTTP error while fetching Glances data from {url}: {e.response.status_code}")
             return None
         except Exception as e:
-            logger.error(f"Error fetching Glances data from {url}: {e}")
+            logger.error(f"Unexpected error fetching Glances data from {url}: {e}")
             return None
     
     async def get_cpu_stats(self, url: str, auth: Optional[Tuple[str, str]] = None,
@@ -55,7 +73,17 @@ class GlancesClient:
         try:
             cpu_url = url.replace("/api/4/all", "/api/4/cpu")
             
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
+            timeout_config = httpx.Timeout(
+                connect=10.0,
+                read=self.timeout,
+                write=10.0,
+                pool=10.0
+            )
+            
+            async with httpx.AsyncClient(
+                timeout=timeout_config,
+                headers={"User-Agent": "Reverse-Proxy-Monitor/1.0"}
+            ) as client:
                 response = await client.get(
                     cpu_url,
                     auth=auth,
