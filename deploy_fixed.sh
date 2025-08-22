@@ -196,7 +196,28 @@ setup_application() {
     
     # Устанавливаем зависимости
     log "Установка зависимостей..."
-    pip install -r setup_requirements.txt
+    
+    # Обновляем setuptools для совместимости
+    pip install --upgrade pip setuptools wheel
+    
+    # Устанавливаем зависимости по группам для лучшей совместимости
+    pip install fastapi uvicorn starlette
+    pip install sqlalchemy alembic psycopg2-binary
+    pip install pydantic pydantic-settings
+    pip install passlib[bcrypt] python-jose[cryptography] python-multipart
+    pip install httpx paramiko dnspython cryptography
+    pip install apscheduler jinja2 aiofiles typer
+    
+    log "✅ Все зависимости установлены"
+    
+    # Тестируем критические импорты
+    log "Тестирование критических импортов..."
+    if python -c "import pydantic_settings, sqlalchemy, fastapi; print('✅ Основные модули доступны')"; then
+        log "✅ Импорты работают корректно"
+    else
+        warn "⚠️ Проблема с импортами - переустановка зависимостей..."
+        pip install --force-reinstall pydantic-settings sqlalchemy fastapi
+    fi
     
     log "Приложение настроено"
 }
@@ -624,14 +645,17 @@ setup_firewall() {
     if command -v ufw >/dev/null 2>&1; then
         # Ubuntu/Debian UFW
         ufw allow ssh
+        ufw allow 22/tcp
         ufw allow 80/tcp
         ufw allow 443/tcp
+        ufw allow 5000/tcp
         ufw --force enable
     elif command -v firewall-cmd >/dev/null 2>&1; then
         # CentOS/RHEL firewalld
         firewall-cmd --permanent --add-service=ssh
         firewall-cmd --permanent --add-service=http
         firewall-cmd --permanent --add-service=https
+        firewall-cmd --permanent --add-port=5000/tcp
         firewall-cmd --reload
         systemctl enable firewalld
     fi
@@ -667,9 +691,26 @@ start_services() {
     sleep 5
     
     # Проверяем статус
-    systemctl status reverse-proxy-monitor --no-pager
+    if systemctl is-active --quiet reverse-proxy-monitor; then
+        log "✅ Сервис reverse-proxy-monitor запущен"
+    else
+        error "❌ Ошибка запуска сервиса"
+    fi
     
-    log "Сервисы запущены"
+    # Тестируем локальное подключение
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost:5000/ | grep -E "200|302"; then
+        log "✅ Приложение отвечает на порту 5000"
+    else
+        warn "⚠️ Проблема с подключением к приложению"
+    fi
+    
+    if curl -s -o /dev/null -w "%{http_code}" http://localhost/ | grep -E "200|302"; then
+        log "✅ Nginx проксирует корректно"
+    else
+        warn "⚠️ Проблема с Nginx проксированием"
+    fi
+    
+    log "Сервисы запущены и протестированы"
 }
 
 # Создание скрипта обновления
@@ -738,21 +779,48 @@ final_check() {
     echo -e "\n${BLUE}=== HTTP ТЕСТ ===${NC}"
     curl -I http://localhost/ 2>/dev/null | head -1 && echo "✅ HTTP: отвечает" || echo "❌ HTTP: не отвечает"
     
+    # Определяем внешний IP
+    EXTERNAL_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
+    
+    # Тестируем доступность с внешнего IP
+    echo -e "\n${BLUE}=== ВНЕШНИЙ ДОСТУП ===${NC}"
+    if timeout 10 curl -s -o /dev/null -w "%{http_code}" http://${EXTERNAL_IP}/ | grep -E "200|302"; then
+        echo "✅ Внешний доступ: работает (http://${EXTERNAL_IP}/)"
+    else
+        echo "❌ Внешний доступ: недоступен. Проверьте файрвол провайдера."
+        echo "   Для тестирования локально используйте: http://localhost/"
+        echo "   Или прямой доступ к приложению: http://${EXTERNAL_IP}:5000/"
+    fi
+    
     # Проверяем логи
     echo -e "\n${BLUE}=== ПОСЛЕДНИЕ ЛОГИ ===${NC}"
     journalctl -u reverse-proxy-monitor --no-pager -n 5
     
     echo -e "\n${GREEN}=== ИНФОРМАЦИЯ ДЛЯ ВХОДА ===${NC}"
-    echo "URL: http://$(hostname -I | awk '{print $1}')/"
-    echo "Администратор:"
-    echo "  Логин: admin"
-    echo "  Пароль: admin123"
+    EXTERNAL_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
+    echo "🌐 Основной URL: http://${EXTERNAL_IP}/"
+    echo "🔗 Прямой доступ: http://${EXTERNAL_IP}:5000/"
+    echo "🏠 Локальный доступ: http://localhost/"
+    echo "👤 Администратор:"
+    echo "   Логин: admin"
+    echo "   Пароль: admin123"
+    
+    if [[ -n "$BASIC_AUTH_ENABLED" && "$BASIC_AUTH_ENABLED" == "true" ]]; then
+        echo "🔐 HTTP Basic Auth:"
+        echo "   Логин: ${BASIC_AUTH_USER:-admin}"
+        echo "   Пароль: ${BASIC_AUTH_PASS:-admin123}"
+    fi
     
     echo -e "\n${BLUE}=== ПОЛЕЗНЫЕ КОМАНДЫ ===${NC}"
     echo "Статус сервиса:      sudo systemctl status reverse-proxy-monitor"
     echo "Перезапуск сервиса:  sudo systemctl restart reverse-proxy-monitor"
     echo "Логи сервиса:        sudo journalctl -u reverse-proxy-monitor -f"
     echo "Обновление:          sudo /opt/reverse-proxy-monitor/update.sh"
+    
+    echo -e "\n${BLUE}=== ДИАГНОСТИКА СЕТИ ===${NC}"
+    echo "Если не доступен извне - выполните:"
+    echo "wget https://raw.githubusercontent.com/globalduckmac/ProxySense/main/fix_network_access.sh"
+    echo "chmod +x fix_network_access.sh && sudo ./fix_network_access.sh"
 }
 
 # Основная функция
@@ -782,6 +850,15 @@ main() {
     create_update_script
     final_check
     
+        # Финальная проверка импортов в venv
+    log "Финальная проверка импортов..."
+    cd /opt/reverse-proxy-monitor
+    if sudo -u rpmonitor venv/bin/python -c "from backend.config import settings; print('✅ Конфигурация загружается')"; then
+        log "✅ Все модули работают в venv"
+    else
+        warn "⚠️ Проблемы с импортами после установки"
+    fi
+    
     log "🎉 УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО!"
     
     # Очищаем временные файлы
@@ -790,7 +867,8 @@ main() {
     echo -e "\n${GREEN}╔══════════════════════════════════════════════════════════════════════╗"
     echo -e "║                    УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО!                     ║"
     echo -e "║                                                                      ║"  
-    echo -e "║  🌐 Веб-интерфейс: http://$(hostname -I | awk '{print $1}')/"
+    EXTERNAL_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
+    echo -e "║  🌐 Веб-интерфейс: http://${EXTERNAL_IP}/"
     echo -e "║  👤 Логин: admin                                                     ║"
     echo -e "║  🔑 Пароль: admin123                                                 ║"
     echo -e "║                                                                      ║"
