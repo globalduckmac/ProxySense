@@ -488,12 +488,12 @@ async def probe_glances(
             headers["Authorization"] = f"Bearer {token}"
         
         # Test connection
-        success, message = await glances_client.test_connection(glances_url, auth, headers)
+        success = await glances_client.test_connection(glances_url, auth, headers)
         
         if success:
-            return {"success": True, "message": message}
+            return {"success": True, "message": "Glances API connection successful"}
         else:
-            return {"success": False, "message": message}
+            return {"success": False, "message": "Failed to connect to Glances API"}
     
     except Exception as e:
         logger.error(f"Error probing Glances on server {server.name}: {e}")
